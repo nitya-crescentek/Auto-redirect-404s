@@ -13,7 +13,7 @@ if (!defined('ABSPATH')) {
 ?>
 
 <div class="wrap">
-    <h1><?php _e('404 Redirect Settings', 'redirect-404-custom'); ?></h1>
+    <h1><?php echo esc_html(__('404 Redirect Settings', 'auto-redirect-404s')); ?></h1>
     
     <?php settings_errors('r404c_messages'); ?>
     
@@ -24,14 +24,14 @@ if (!defined('ABSPATH')) {
                 
                 <div class="r404c-section">
                     <div class="r404c-section-header">
-                        <h2><?php _e('Redirect Configuration', 'redirect-404-custom'); ?></h2>
-                        <p class="description"><?php _e('Configure how 404 errors should be handled on your website.', 'redirect-404-custom'); ?></p>
+                        <h2><?php esc_html_e('Redirect Configuration', 'auto-redirect-404s'); ?></h2>
+                        <p class="description"><?php esc_html_e('Configure how 404 errors should be handled on your website.', 'auto-redirect-404s'); ?></p>
                     </div>
                     
                     <table class="form-table">
                         <tr>
                             <th scope="row">
-                                <label for="r404c_enabled"><?php _e('Enable Redirects', 'redirect-404-custom'); ?></label>
+                                <label for="r404c_enabled"><?php esc_html_e('Enable Redirects', 'auto-redirect-404s'); ?></label>
                             </th>
                             <td>
                                 <div class="r404c-toggle-container">
@@ -43,23 +43,23 @@ if (!defined('ABSPATH')) {
                                         <span class="r404c-toggle-slider"></span>
                                         
                                     </label>
-                                    <span class="r404c-toggle-label" data-on="<?php _e('Enabled', 'redirect-404-custom'); ?>" data-off="<?php _e('Disabled', 'redirect-404-custom'); ?>"></span>
+                                    <span class="r404c-toggle-label" data-on="<?php esc_attr_e('Enabled', 'auto-redirect-404s'); ?>" data-off="<?php esc_attr_e('Disabled', 'auto-redirect-404s'); ?>"></span>
                                 </div>
-                                <p class="description"><?php _e('Toggle this to enable or disable 404 redirects.', 'redirect-404-custom'); ?></p>
+                                <p class="description"><?php esc_html_e('Toggle this to enable or disable 404 redirects.', 'auto-redirect-404s'); ?></p>
                             </td>
                         </tr>
                         
                         <tr>
                             <th scope="row">
-                                <label for="r404c_redirect_url"><?php _e('Redirect URL', 'redirect-404-custom'); ?></label>
+                                <label for="r404c_redirect_url"><?php esc_html_e('Redirect URL', 'auto-redirect-404s'); ?></label>
                             </th>
                             <td>
                                 <div class="r404c-url-section">
                                     <div class="r404c-quick-select">
-                                        <label for="r404c_quick_select"><?php _e('Quick Select:', 'redirect-404-custom'); ?></label>
+                                        <label for="r404c_quick_select"><?php esc_html_e('Quick Select:', 'auto-redirect-404s'); ?></label>
                                         <select id="r404c_quick_select">
-                                            <option value=""><?php _e('-- Choose a page --', 'redirect-404-custom'); ?></option>
-                                            <option value="<?php echo esc_url(home_url()); ?>"><?php _e('Home Page', 'redirect-404-custom'); ?></option>
+                                            <option value=""><?php esc_html_e('-- Choose a page --', 'auto-redirect-404s'); ?></option>
+                                            <option value="<?php echo esc_url(home_url()); ?>"><?php esc_html_e('Home Page', 'auto-redirect-404s'); ?></option>
                                             <?php foreach ($pages as $page) : ?>
                                                 <option value="<?php echo esc_url(get_permalink($page->ID)); ?>">
                                                     <?php echo esc_html($page->post_title); ?>
@@ -74,15 +74,15 @@ if (!defined('ABSPATH')) {
                                                name="r404c_redirect_url" 
                                                value="<?php echo esc_url($redirect_url); ?>" 
                                                class="large-text" 
-                                               placeholder="<?php _e('Enter redirect URL...', 'redirect-404-custom'); ?>" />
+                                               placeholder="<?php esc_attr_e('Enter redirect URL...', 'auto-redirect-404s'); ?>" />
                                     </div>
                                 </div>
-                                <p class="description"><?php _e('404 pages will redirect to this URL. Use the dropdown above for quick selection or enter a custom URL.', 'redirect-404-custom'); ?></p>
+                                <p class="description"><?php esc_html_e('404 pages will redirect to this URL. Use the dropdown above for quick selection or enter a custom URL.', 'auto-redirect-404s'); ?></p>
                             </td>
                         </tr>
                         
                         <tr>
-                            <th scope="row"><?php _e('Redirect Type', 'redirect-404-custom'); ?></th>
+                            <th scope="row"><?php esc_html_e('Redirect Type', 'auto-redirect-404s'); ?></th>
                             <td>
                                 <div class="r404c-radio-group">
                                     <label class="r404c-radio-option">
@@ -92,8 +92,8 @@ if (!defined('ABSPATH')) {
                                                <?php checked($redirect_type, '301'); ?> />
                                         <span class="r404c-radio-checkmark"></span>
                                         <span class="r404c-radio-label">
-                                            <strong><?php _e('301 - Permanent Redirect', 'redirect-404-custom'); ?></strong>
-                                            <small><?php _e('(Recommended for SEO)', 'redirect-404-custom'); ?></small>
+                                            <strong><?php esc_html_e('301 - Permanent Redirect', 'auto-redirect-404s'); ?></strong>
+                                            <small><?php esc_html_e('(Recommended for SEO)', 'auto-redirect-404s'); ?></small>
                                         </span>
                                     </label>
                                     
@@ -104,50 +104,58 @@ if (!defined('ABSPATH')) {
                                                <?php checked($redirect_type, '302'); ?> />
                                         <span class="r404c-radio-checkmark"></span>
                                         <span class="r404c-radio-label">
-                                            <strong><?php _e('302 - Temporary Redirect', 'redirect-404-custom'); ?></strong>
-                                            <small><?php _e('(Use if the redirect is temporary)', 'redirect-404-custom'); ?></small>
+                                            <strong><?php esc_html_e('302 - Temporary Redirect', 'auto-redirect-404s'); ?></strong>
+                                            <small><?php esc_html_e('(Use if the redirect is temporary)', 'auto-redirect-404s'); ?></small>
                                         </span>
                                     </label>
                                 </div>
-                                <p class="description"><?php _e('301 redirects are permanent and pass SEO value, while 302 redirects are temporary.', 'redirect-404-custom'); ?></p>
+                                <p class="description"><?php esc_html_e('301 redirects are permanent and pass SEO value, while 302 redirects are temporary.', 'auto-redirect-404s'); ?></p>
                             </td>
                         </tr>
                     </table>
                 </div>
                 
-                <?php submit_button(__('Save Settings', 'redirect-404-custom'), 'primary', 'submit', false); ?>
+                <?php submit_button(__('Save Settings', 'auto-redirect-404s'), 'primary', 'submit', false); ?>
             </form>
         </div>
         
         <div class="r404c-sidebar">
             <div class="r404c-sidebar-box">
-                <h3><?php _e('How it Works', 'redirect-404-custom'); ?></h3>
+                <h3><?php esc_html_e('How it Works', 'auto-redirect-404s'); ?></h3>
                 <ul>
-                    <li><?php _e('When a visitor accesses a non-existent page, they get a 404 error', 'redirect-404-custom'); ?></li>
-                    <li><?php _e('This plugin automatically redirects them to your chosen URL', 'redirect-404-custom'); ?></li>
-                    <li><?php _e('This improves user experience and helps with SEO', 'redirect-404-custom'); ?></li>
+                    <li><?php esc_html_e('When a visitor accesses a non-existent page, they get a 404 error', 'auto-redirect-404s'); ?></li>
+                    <li><?php esc_html_e('This plugin automatically redirects them to your chosen URL', 'auto-redirect-404s'); ?></li>
+                    <li><?php esc_html_e('This improves user experience and helps with SEO', 'auto-redirect-404s'); ?></li>
                 </ul>
             </div>
             
             <div class="r404c-sidebar-box">
-                <h3><?php _e('SEO Benefits', 'redirect-404-custom'); ?></h3>
+                <h3><?php esc_html_e('SEO Benefits', 'auto-redirect-404s'); ?></h3>
                 <ul>
-                    <li><?php _e('Reduces bounce rate from 404 errors', 'redirect-404-custom'); ?></li>
-                    <li><?php _e('Helps with Google Search Console reports', 'redirect-404-custom'); ?></li>
-                    <li><?php _e('Keeps visitors on your site longer', 'redirect-404-custom'); ?></li>
+                    <li><?php esc_html_e('Reduces bounce rate from 404 errors', 'auto-redirect-404s'); ?></li>
+                    <li><?php esc_html_e('Helps with Google Search Console reports', 'auto-redirect-404s'); ?></li>
+                    <li><?php esc_html_e('Keeps visitors on your site longer', 'auto-redirect-404s'); ?></li>
                 </ul>
             </div>
             
             <div class="r404c-sidebar-box r404c-status-box">
-                <h3><?php _e('Current Status', 'redirect-404-custom'); ?></h3>
+                <h3><?php esc_html_e('Current Status', 'auto-redirect-404s'); ?></h3>
                 <div class="r404c-status">
                     <span class="r404c-status-indicator <?php echo $enabled === 'on' ? 'active' : 'inactive'; ?>"></span>
                     <span class="r404c-status-text">
-                        <?php echo $enabled === 'on' ? __('Active', 'redirect-404-custom') : __('Inactive', 'redirect-404-custom'); ?>
+                        <?php echo $enabled === 'on' ? esc_html__('Active', 'auto-redirect-404s') : esc_html__('Inactive', 'auto-redirect-404s'); ?>
                     </span>
                 </div>
                 <?php if ($enabled === 'on') : ?>
-                    <p><small><?php printf(__('Redirecting to: %s', 'redirect-404-custom'), '<br><strong>' . esc_url($redirect_url) . '</strong>'); ?></small></p>
+                    <p><small>
+                        <?php
+                        printf(
+                            /* translators: %s: URL where the user is being redirected */
+                            esc_html__('Redirecting to: %s', 'auto-redirect-404s'),
+                            esc_url($redirect_url)
+                        );
+                        ?>
+                    </small></p>
                 <?php endif; ?>
             </div>
         </div>

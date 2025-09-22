@@ -66,13 +66,13 @@ class R404C_Settings {
             }
             
             if (!filter_var($url, FILTER_VALIDATE_URL)) {
-                $errors[] = __('Please enter a valid redirect URL.', 'redirect-404-custom');
+                $errors[] = __('Please enter a valid redirect URL.', 'auto-redirect-404s');
             }
         }
         
         // Validate redirect type
         if (!in_array($settings['redirect_type'], array('301', '302'))) {
-            $errors[] = __('Invalid redirect type selected.', 'redirect-404-custom');
+            $errors[] = __('Invalid redirect type selected.', 'auto-redirect-404s');
         }
         
         return $errors;

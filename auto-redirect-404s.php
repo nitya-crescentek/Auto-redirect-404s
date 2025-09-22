@@ -1,14 +1,13 @@
 <?php
 /**
  * Plugin Name: Auto Redirect 404 to Custom URL
- * Plugin URI: https://example.com/redirect-404-plugin
  * Description: Redirects all 404 errors to a custom URL or home page. Helps fix 404 errors in Google Search Console with proper SEO redirects.
  * Version: 1.0.0
  * Author: Nitya Saha
- * Author URI: https://example.com
+ * Author URI: https://codesocials.com/
  * License: GPL v2 or later
  * License URI: https://www.gnu.org/licenses/gpl-2.0.html
- * Text Domain: redirect-404-custom
+ * Text Domain: auto-redirect-404s
  * Domain Path: /languages
  * 
  * @package Redirect404Custom
@@ -59,8 +58,6 @@ class Redirect_404_Custom {
      * Initialize plugin
      */
     private function init() {
-        // Load text domain
-        add_action('init', array($this, 'load_textdomain'));
         
         // Include required files
         $this->includes();
@@ -88,16 +85,6 @@ class Redirect_404_Custom {
         require_once R404C_PLUGIN_DIR . 'includes/class-settings.php';
     }
     
-    /**
-     * Load text domain for translations
-     */
-    public function load_textdomain() {
-        load_plugin_textdomain(
-            'redirect-404-custom',
-            false,
-            dirname(plugin_basename(R404C_PLUGIN_FILE)) . '/languages'
-        );
-    }
     
     /**
      * Plugin activation

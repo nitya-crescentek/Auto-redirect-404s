@@ -32,10 +32,10 @@ class R404C_Admin {
      */
     public function add_admin_menu() {
         add_options_page(
-            __('404 Redirect Settings', 'redirect-404-custom'),
-            __('404 Redirect', 'redirect-404-custom'),
+            __('404 Redirect Settings', 'auto-redirect-404s'),
+            __('Auto 404 Redirects', 'auto-redirect-404s'),
             'manage_options',
-            'redirect-404-custom',
+            'auto-redirect-404s',
             array($this, 'settings_page')
         );
     }
@@ -73,7 +73,7 @@ class R404C_Admin {
      * Enqueue admin assets
      */
     public function enqueue_admin_assets($hook) {
-        if ('settings_page_redirect-404-custom' !== $hook) {
+        if ('settings_page_auto-redirect-404s' !== $hook) {
             return;
         }
         
@@ -106,8 +106,8 @@ class R404C_Admin {
     public function add_settings_link($links) {
         $settings_link = sprintf(
             '<a href="%s">%s</a>',
-            admin_url('options-general.php?page=redirect-404-custom'),
-            __('Settings', 'redirect-404-custom')
+            admin_url('options-general.php?page=auto-redirect-404s'),
+            __('Settings', 'auto-redirect-404s')
         );
         array_unshift($links, $settings_link);
         return $links;
@@ -117,8 +117,8 @@ class R404C_Admin {
         if ( $file !== plugin_basename( R404C_PLUGIN_FILE ) ) {
             return $links;
         }
-        $links[] = __( '<a href="https://buymeacoffee.com/nityasaha" style="font-weight:bold;color:#00d300;font-size:15px;">Donate</a>', 'share-cart-for-woocommerce' );
-        $links[] = __( 'Made with Love ❤️', 'share-cart-for-woocommerce' );
+        $links[] = __( '<a href="https://buymeacoffee.com/nityasaha" style="font-weight:bold;color:#00d300;font-size:15px;">Donate</a>', 'auto-redirect-404s' );
+        $links[] = __( 'Made with Love ❤️', 'auto-redirect-404s' );
 
         return $links;
     }
@@ -127,13 +127,16 @@ class R404C_Admin {
      * Settings page content
      */
     public function settings_page() {
-        if (!current_user_can('manage_options')) {
-            wp_die(__('You do not have sufficient permissions to access this page.'));
+        if (! current_user_can('manage_options')) {
+            wp_die(esc_html__('You do not have sufficient permissions to access this page.', 'auto-redirect-404s'));
         }
-        
+
         // Handle form submission
-        if (isset($_POST['submit']) && wp_verify_nonce($_POST['r404c_nonce'], 'r404c_save_settings')) {
-            $this->save_settings();
+        if (isset($_POST['submit']) && isset($_POST['r404c_nonce'])) {
+            $nonce = sanitize_text_field(wp_unslash($_POST['r404c_nonce']));
+            if (wp_verify_nonce($nonce, 'r404c_save_settings')) {
+                $this->save_settings();
+            }
         }
         
         // Get current settings
@@ -156,8 +159,18 @@ class R404C_Admin {
     private function save_settings() {
         // Validate and sanitize
         $enabled = isset($_POST['r404c_enabled']) ? 'on' : 'off';
-        $redirect_url = sanitize_text_field($_POST['r404c_redirect_url']);
-        $redirect_type = sanitize_text_field($_POST['r404c_redirect_type']);
+        
+        // Sanitize URL input
+        $redirect_url = '';
+        if (isset($_POST['r404c_redirect_url'])) {
+            $redirect_url = sanitize_text_field(wp_unslash($_POST['r404c_redirect_url']));
+        }
+        
+        // Sanitize redirect type input
+        $redirect_type = '301';
+        if (isset($_POST['r404c_redirect_type'])) {
+            $redirect_type = sanitize_text_field(wp_unslash($_POST['r404c_redirect_type']));
+        }
         
         // Validate URL
         if (!empty($redirect_url)) {
@@ -172,7 +185,7 @@ class R404C_Admin {
                     add_settings_error(
                         'r404c_messages',
                         'r404c_message',
-                        __('Please enter a valid URL.', 'redirect-404-custom'),
+                        __('Please enter a valid URL.', 'auto-redirect-404s'),
                         'error'
                     );
                     return;
@@ -188,7 +201,7 @@ class R404C_Admin {
         add_settings_error(
             'r404c_messages',
             'r404c_message',
-            __('Settings saved successfully!', 'redirect-404-custom'),
+            __('Settings saved successfully!', 'auto-redirect-404s'),
             'updated'
         );
     }

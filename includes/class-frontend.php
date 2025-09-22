@@ -66,7 +66,20 @@ class R404C_Frontend {
      */
     private function get_current_url() {
         $protocol = is_ssl() ? 'https://' : 'http://';
-        return $protocol . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
+        
+        // Safely get HTTP_HOST
+        $host = '';
+        if (isset($_SERVER['HTTP_HOST'])) {
+            $host = sanitize_text_field(wp_unslash($_SERVER['HTTP_HOST']));
+        }
+        
+        // Safely get REQUEST_URI
+        $request_uri = '';
+        if (isset($_SERVER['REQUEST_URI'])) {
+            $request_uri = sanitize_text_field(wp_unslash($_SERVER['REQUEST_URI']));
+        }
+        
+        return $protocol . $host . $request_uri;
     }
     
     /**
@@ -86,10 +99,13 @@ class R404C_Frontend {
             return;
         }
         
-        error_log(sprintf(
-            '[404 Redirect] Redirecting from %s to %s',
-            $from_url,
-            $to_url
-        ));
+        // Use WordPress logging instead of error_log for better compatibility
+        if (function_exists('wp_debug_log')) {
+            wp_debug_log(sprintf(
+                '[404 Redirect] Redirecting from %s to %s',
+                $from_url,
+                $to_url
+            ));
+        }
     }
 }
