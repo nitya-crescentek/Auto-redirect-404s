@@ -157,8 +157,22 @@ class R404C_Admin {
      * Save settings
      */
     private function save_settings() {
+        // Check nonce
+        if (
+            !isset($_POST['r404c_nonce']) || 
+            !wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['r404c_nonce'])), 'r404c_save_settings')
+        ) {
+            add_settings_error(
+                'r404c_messages',
+                'r404c_message',
+                __('Nonce verification failed. Please try again.', 'auto-redirect-404s'),
+                'error'
+            );
+            return;
+        }
+
         // Validate and sanitize
-        $enabled = isset($_POST['r404c_enabled']) ? 'on' : 'off';
+        $enabled = isset($_POST['r404c_enabled']) && sanitize_text_field(wp_unslash($_POST['r404c_enabled'])) === 'on' ? 'on' : 'off';
         
         // Sanitize URL input
         $redirect_url = '';
@@ -205,6 +219,7 @@ class R404C_Admin {
             'updated'
         );
     }
+
     
     /**
      * Sanitize checkbox
