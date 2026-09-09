@@ -9,6 +9,11 @@
  * @var string $redirect_url    Configured destination URL.
  * @var string $redirect_type   '301' or '302'.
  * @var string $logging_enabled 'on' or 'off'.
+ * @var string $loop_protection 'on' or 'off'.
+ * @var string $skip_assets     'on' or 'off'.
+ * @var string $show_top_widget 'on' or 'off'.
+ * @var string $exclusion_patterns Newline-separated URL patterns.
+ * @var string|false $destination_status 'broken', 'ok', or false if unchecked.
  * @var int    $log_count       Number of logged 404 URLs.
  * @var string $settings_url    URL of the settings tab.
  * @var string $logs_url        URL of the logs tab.
@@ -49,30 +54,6 @@ if (!defined('ABSPATH')) {
                             <h2><?php esc_html_e('Redirect Configuration', 'auto-redirect-404s'); ?></h2>
                             <p class="description"><?php esc_html_e('Configure how 404 errors should be handled on your website.', 'auto-redirect-404s'); ?></p>
                         </div>
-
-                        <div class="r404c-logging-control">
-                            <span class="r404c-logging-title"><?php esc_html_e('404 Logging', 'auto-redirect-404s'); ?></span>
-
-                            <div class="r404c-toggle-container">
-                                <label class="r404c-toggle r404c-toggle-sm">
-                                    <input type="checkbox"
-                                           id="r404c_logging_enabled"
-                                           name="r404c_logging_enabled"
-                                           <?php checked($logging_enabled, 'on'); ?> />
-                                    <span class="r404c-toggle-slider"></span>
-                                </label>
-                                <span class="r404c-toggle-label"
-                                      data-on="<?php esc_attr_e('On', 'auto-redirect-404s'); ?>"
-                                      data-off="<?php esc_attr_e('Off', 'auto-redirect-404s'); ?>"></span>
-                            </div>
-
-                            <a class="r404c-logs-link" href="<?php echo esc_url($logs_url); ?>">
-                                <?php esc_html_e('View Logs', 'auto-redirect-404s'); ?>
-                                <?php if ($log_count > 0) : ?>
-                                    <span class="r404c-count"><?php echo esc_html(number_format_i18n($log_count)); ?></span>
-                                <?php endif; ?>
-                            </a>
-                        </div>
                     </div>
 
                     <table class="form-table">
@@ -93,6 +74,25 @@ if (!defined('ABSPATH')) {
                                     <span class="r404c-toggle-label" data-on="<?php esc_attr_e('Enabled', 'auto-redirect-404s'); ?>" data-off="<?php esc_attr_e('Disabled', 'auto-redirect-404s'); ?>"></span>
                                 </div>
                                 <p class="description"><?php esc_html_e('Toggle this to enable or disable 404 redirects.', 'auto-redirect-404s'); ?></p>
+                            </td>
+                        </tr>
+
+                        <tr>
+                            <th scope="row">
+                                <label for="r404c_logging_enabled"><?php esc_html_e('404 Logging', 'auto-redirect-404s'); ?></label>
+                            </th>
+                            <td>
+                                <div class="r404c-toggle-container">
+                                    <label class="r404c-toggle">
+                                        <input type="checkbox"
+                                               id="r404c_logging_enabled"
+                                               name="r404c_logging_enabled"
+                                               <?php checked($logging_enabled, 'on'); ?> />
+                                        <span class="r404c-toggle-slider"></span>
+                                    </label>
+                                    <span class="r404c-toggle-label" data-on="<?php esc_attr_e('Enabled', 'auto-redirect-404s'); ?>" data-off="<?php esc_attr_e('Disabled', 'auto-redirect-404s'); ?>"></span>
+                                </div>
+                                <p class="description"><?php esc_html_e('Record every broken URL that returns a 404, with a hit counter and referrer. Open the 404 Logs tab above to review them.', 'auto-redirect-404s'); ?></p>
                             </td>
                         </tr>
 
@@ -162,13 +162,130 @@ if (!defined('ABSPATH')) {
                     </table>
                 </div>
 
+                <div class="r404c-section">
+                    <div class="r404c-section-header">
+                        <div class="r404c-section-heading">
+                            <h2><?php esc_html_e('Exclusions &amp; Safety', 'auto-redirect-404s'); ?></h2>
+                            <p class="description"><?php esc_html_e('Decide which 404 errors should be left alone, and guard against redirect loops.', 'auto-redirect-404s'); ?></p>
+                        </div>
+                    </div>
+
+                    <table class="form-table">
+                        <tr>
+                            <th scope="row">
+                                <label for="r404c_loop_protection"><?php esc_html_e('Redirect Loop Protection', 'auto-redirect-404s'); ?></label>
+                            </th>
+                            <td>
+                                <div class="r404c-toggle-container">
+                                    <label class="r404c-toggle">
+                                        <input type="checkbox"
+                                               id="r404c_loop_protection"
+                                               name="r404c_loop_protection"
+                                               <?php checked($loop_protection, 'on'); ?> />
+                                        <span class="r404c-toggle-slider"></span>
+                                    </label>
+                                    <span class="r404c-toggle-label" data-on="<?php esc_attr_e('Enabled', 'auto-redirect-404s'); ?>" data-off="<?php esc_attr_e('Disabled', 'auto-redirect-404s'); ?>"></span>
+                                </div>
+                                <?php if ('broken' === $destination_status) : ?>
+                                    <p class="r404c-destination-alert">
+                                        <strong><?php esc_html_e('Your redirect destination is currently returning a 404.', 'auto-redirect-404s'); ?></strong>
+                                        <?php esc_html_e('Visitors are being shown the normal 404 page instead of being redirected into a loop. Fix or change the Redirect URL above to resume redirecting.', 'auto-redirect-404s'); ?>
+                                    </p>
+                                <?php elseif ('ok' === $destination_status) : ?>
+                                    <p class="r404c-destination-ok">
+                                        <?php esc_html_e('Destination checked and reachable.', 'auto-redirect-404s'); ?>
+                                    </p>
+                                <?php endif; ?>
+                                <p class="description">
+                                    <?php esc_html_e('Checks that your redirect destination actually exists before sending visitors to it. If the destination is itself missing, the normal 404 page is shown instead of bouncing the visitor in a loop. The check runs in the background against your own site, so it never slows down a visitor.', 'auto-redirect-404s'); ?>
+                                </p>
+                            </td>
+                        </tr>
+
+                        <tr>
+                            <th scope="row">
+                                <label for="r404c_skip_assets"><?php esc_html_e('Skip Files &amp; System Paths', 'auto-redirect-404s'); ?></label>
+                            </th>
+                            <td>
+                                <div class="r404c-toggle-container">
+                                    <label class="r404c-toggle">
+                                        <input type="checkbox"
+                                               id="r404c_skip_assets"
+                                               name="r404c_skip_assets"
+                                               <?php checked($skip_assets, 'on'); ?> />
+                                        <span class="r404c-toggle-slider"></span>
+                                    </label>
+                                    <span class="r404c-toggle-label" data-on="<?php esc_attr_e('Enabled', 'auto-redirect-404s'); ?>" data-off="<?php esc_attr_e('Disabled', 'auto-redirect-404s'); ?>"></span>
+                                </div>
+                                <p class="description">
+                                    <?php esc_html_e('Leaves a real 404 for missing images, scripts, stylesheets, fonts, documents and archives, and for system paths such as /wp-json/, /wp-content/, feeds, sitemaps and robots.txt. Recommended: redirecting a missing file to an HTML page confuses browsers and crawlers.', 'auto-redirect-404s'); ?>
+                                </p>
+                            </td>
+                        </tr>
+
+                        <tr>
+                            <th scope="row">
+                                <label for="r404c_exclusion_patterns"><?php esc_html_e('Exclusion Patterns', 'auto-redirect-404s'); ?></label>
+                            </th>
+                            <td>
+                                <textarea id="r404c_exclusion_patterns"
+                                          name="r404c_exclusion_patterns"
+                                          class="large-text code r404c-patterns"
+                                          rows="6"
+                                          spellcheck="false"
+                                          placeholder="<?php echo esc_attr("/private/*\n/downloads/*.zip\n*/preview\n/campaign-?"); ?>"><?php echo esc_textarea($exclusion_patterns); ?></textarea>
+                                <p class="description">
+                                    <?php esc_html_e('One pattern per line. URLs matching a pattern keep their real 404 and are never redirected or logged.', 'auto-redirect-404s'); ?>
+                                    <br />
+                                    <?php
+                                    printf(
+                                        /* translators: 1: asterisk wildcard, 2: question mark wildcard */
+                                        esc_html__('Use %1$s to match any part of a path and %2$s to match a single character. Patterns are matched against the path only, without the domain or query string, and are not case sensitive.', 'auto-redirect-404s'),
+                                        '<code>*</code>',
+                                        '<code>?</code>'
+                                    );
+                                    ?>
+                                    <br />
+                                    <?php
+                                    printf(
+                                        /* translators: %s: maximum number of patterns */
+                                        esc_html__('Maximum %s patterns.', 'auto-redirect-404s'),
+                                        esc_html(number_format_i18n(R404C_Admin::MAX_PATTERNS))
+                                    );
+                                    ?>
+                                </p>
+                            </td>
+                        </tr>
+
+                        <tr>
+                            <th scope="row">
+                                <label for="r404c_show_top_widget"><?php esc_html_e('Top 404s Widget', 'auto-redirect-404s'); ?></label>
+                            </th>
+                            <td>
+                                <div class="r404c-toggle-container">
+                                    <label class="r404c-toggle">
+                                        <input type="checkbox"
+                                               id="r404c_show_top_widget"
+                                               name="r404c_show_top_widget"
+                                               <?php checked($show_top_widget, 'on'); ?> />
+                                        <span class="r404c-toggle-slider"></span>
+                                    </label>
+                                    <span class="r404c-toggle-label" data-on="<?php esc_attr_e('Shown', 'auto-redirect-404s'); ?>" data-off="<?php esc_attr_e('Hidden', 'auto-redirect-404s'); ?>"></span>
+                                </div>
+                                <p class="description"><?php esc_html_e('Shows your five most-hit broken links in the sidebar of this page. Requires 404 logging to be switched on.', 'auto-redirect-404s'); ?></p>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+
                 <?php submit_button(__('Save Settings', 'auto-redirect-404s'), 'primary', 'submit', false); ?>
             </form>
         </div>
 
         <div class="r404c-sidebar">
             <?php
-            $top_404s = ('on' === $logging_enabled) ? R404C_Logger::get_top(5) : array();
+            $show_widget = ('on' === $logging_enabled) && ('on' === $show_top_widget);
+            $top_404s    = $show_widget ? R404C_Logger::get_top(5) : array();
             if (!empty($top_404s)) :
                 ?>
                 <div class="r404c-sidebar-box r404c-top-box">

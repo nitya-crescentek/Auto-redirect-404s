@@ -17,6 +17,16 @@ if (!defined('ABSPATH')) {
 class R404C_Admin {
 
     /**
+     * Maximum number of exclusion patterns stored.
+     */
+    const MAX_PATTERNS = 100;
+
+    /**
+     * Maximum length of a single exclusion pattern.
+     */
+    const MAX_PATTERN_LENGTH = 255;
+
+    /**
      * Constructor
      */
     public function __construct() {
@@ -75,6 +85,24 @@ class R404C_Admin {
             'r404c_logging_enabled',
             array(
                 'sanitize_callback' => array($this, 'sanitize_checkbox')
+            )
+        );
+
+        foreach (array('r404c_loop_protection', 'r404c_skip_assets', 'r404c_show_top_widget') as $toggle) {
+            register_setting(
+                'r404c_settings_group',
+                $toggle,
+                array(
+                    'sanitize_callback' => array($this, 'sanitize_checkbox')
+                )
+            );
+        }
+
+        register_setting(
+            'r404c_settings_group',
+            'r404c_exclusion_patterns',
+            array(
+                'sanitize_callback' => array($this, 'sanitize_patterns')
             )
         );
     }
@@ -222,21 +250,16 @@ class R404C_Admin {
      * Write one CSV row.
      *
      * PHP 8.4 deprecated relying on fputcsv()'s default $escape value, so it is
-     * always passed explicitly. Disabling escaping entirely (the empty string,
-     * which produces standards-compliant CSV) needs PHP 7.4, so older versions
-     * keep the historic backslash default.
+     * passed explicitly. The empty string disables PHP's non-standard backslash
+     * escaping and produces spec-compliant CSV; it needs PHP 7.4, which is the
+     * plugin's minimum from 1.2.1.
      *
      * @param resource $handle Open stream.
      * @param array    $row    Cell values.
      * @return void
      */
     private function write_csv_row($handle, $row) {
-        if (PHP_VERSION_ID >= 70400) {
-            fputcsv($handle, $row, ',', '"', '');
-            return;
-        }
-
-        fputcsv($handle, $row, ',', '"', "\\");
+        fputcsv($handle, $row, ',', '"', '');
     }
 
     /**
@@ -352,6 +375,11 @@ class R404C_Admin {
         $redirect_url    = get_option('r404c_redirect_url', home_url());
         $redirect_type   = get_option('r404c_redirect_type', '301');
         $logging_enabled = get_option('r404c_logging_enabled', 'off');
+        $loop_protection = get_option('r404c_loop_protection', 'on');
+        $skip_assets     = get_option('r404c_skip_assets', 'on');
+        $show_top_widget = get_option('r404c_show_top_widget', 'on');
+        $exclusion_patterns = (string) get_option('r404c_exclusion_patterns', '');
+        $destination_status = R404C_Frontend::get_destination_status($redirect_url);
 
         // Self-heal: logging is on but the table has gone (dropped by hand, or
         // a database restored from before it existed). One schema check per
@@ -451,6 +479,18 @@ class R404C_Admin {
 
         $logging_enabled = isset($_POST['r404c_logging_enabled']) && sanitize_text_field(wp_unslash($_POST['r404c_logging_enabled'])) === 'on' ? 'on' : 'off';
 
+        // Unchecked boxes are simply absent from the POST body.
+        $toggles = array();
+        foreach (array('r404c_loop_protection', 'r404c_skip_assets', 'r404c_show_top_widget') as $toggle) {
+            $toggles[$toggle] = isset($_POST[$toggle]) && sanitize_text_field(wp_unslash($_POST[$toggle])) === 'on' ? 'on' : 'off';
+        }
+
+        $exclusion_patterns = '';
+        if (isset($_POST['r404c_exclusion_patterns'])) {
+            // wp_unslash only here; sanitize_patterns() cleans each line.
+            $exclusion_patterns = $this->sanitize_patterns(wp_unslash($_POST['r404c_exclusion_patterns']));
+        }
+
         // Sanitize URL input. An empty field is valid and means "do not
         // redirect"; anything non-empty must resolve to a usable http(s) URL.
         $redirect_url = '';
@@ -485,6 +525,18 @@ class R404C_Admin {
         update_option('r404c_enabled', $enabled);
         update_option('r404c_redirect_url', $redirect_url);
         update_option('r404c_redirect_type', $this->sanitize_redirect_type($redirect_type));
+
+        foreach ($toggles as $toggle => $value) {
+            update_option($toggle, $value);
+        }
+
+        update_option('r404c_exclusion_patterns', $exclusion_patterns);
+
+        // Re-check the destination straight away rather than waiting for the
+        // next cron run, so the admin gets immediate feedback on a fix. This is
+        // an admin request, so a slow probe costs nobody a page view.
+        R404C_Frontend::clear_destination_cache($redirect_url);
+        R404C_Frontend::refresh_destination_status($redirect_url);
 
         // Create the log table the first time logging is switched on, so
         // existing installs never carry an unused table.
@@ -564,6 +616,45 @@ class R404C_Admin {
         }
 
         return esc_url_raw($url, array('http', 'https'));
+    }
+
+    /**
+     * Sanitize the exclusion pattern list.
+     *
+     * Stored as one pattern per line. Blank lines are dropped, each line is
+     * capped in length, and the list is capped in size so a paste accident
+     * cannot leave the frontend matching thousands of patterns per request.
+     *
+     * @param string $input Raw textarea contents.
+     * @return string Newline-separated patterns.
+     */
+    public function sanitize_patterns($input) {
+        if (!is_string($input)) {
+            return '';
+        }
+
+        $lines   = preg_split('/[\r\n]+/', $input);
+        $cleaned = array();
+
+        foreach ($lines as $line) {
+            $line = trim(sanitize_text_field($line));
+
+            if ('' === $line) {
+                continue;
+            }
+
+            if (strlen($line) > self::MAX_PATTERN_LENGTH) {
+                $line = substr($line, 0, self::MAX_PATTERN_LENGTH);
+            }
+
+            $cleaned[] = $line;
+
+            if (count($cleaned) >= self::MAX_PATTERNS) {
+                break;
+            }
+        }
+
+        return implode("\n", array_unique($cleaned));
     }
 
     /**

@@ -20,11 +20,17 @@ if (!defined('WP_UNINSTALL_PLUGIN')) {
 function r404c_uninstall_site() {
     global $wpdb;
 
+    wp_clear_scheduled_hook('r404c_check_destination');
+
     $options = array(
         'r404c_enabled',
         'r404c_redirect_url',
         'r404c_redirect_type',
         'r404c_logging_enabled',
+        'r404c_loop_protection',
+        'r404c_skip_assets',
+        'r404c_show_top_widget',
+        'r404c_exclusion_patterns',
         'r404c_version',
         'r404c_db_version',
     );
@@ -37,6 +43,14 @@ function r404c_uninstall_site() {
 
     // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table name cannot be parameterised.
     $wpdb->query("DROP TABLE IF EXISTS {$table}");
+
+    // Loop-protection results are cached as transients keyed by destination.
+    // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+    $wpdb->query(
+        "DELETE FROM {$wpdb->options}
+         WHERE option_name LIKE '\_transient\_r404c\_dest\_%'
+            OR option_name LIKE '\_transient\_timeout\_r404c\_dest\_%'"
+    );
 }
 
 if (is_multisite()) {

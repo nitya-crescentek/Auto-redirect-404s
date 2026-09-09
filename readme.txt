@@ -2,10 +2,10 @@
 Contributors: nityasaha
 Donate link: https://buymeacoffee.com/nityasaha
 Tags: 404 redirect, redirect, 301 redirect, 404 error, seo
-Requires at least: 4.7
+Requires at least: 5.0
 Tested up to: 7.1
-Requires PHP: 7.0
-Stable tag: 1.2.0
+Requires PHP: 7.4
+Stable tag: 1.2.1
 License: GPL v2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -32,8 +32,10 @@ If you are trying to clear "Not found (404)" errors out of Google Search Console
 * **Privacy-Friendly Logging** – no IP addresses, no user agents, no personal data stored
 * **Self-Limiting Log Table** – hard-capped at 1,000 rows, so a bot scan can never bloat your database
 * **Smart Exclusions** – feeds, sitemaps, robots.txt, REST API and cron requests keep their real 404 status
-* **Redirect Loop Protection** – detects when the destination would loop back on itself and stops
-* **Lightweight & Fast** – no bloat, no external requests, and zero work on pages that are not 404s
+* **Skip Files & System Paths** – missing images, scripts, fonts and documents keep a real 404 instead of being redirected
+* **Custom Exclusion Patterns** – your own wildcard rules for URLs that should stay a genuine 404
+* **Redirect Loop Protection** – checks the destination really exists before sending anyone to it
+* **Lightweight & Fast** – no bloat, no third-party services, and zero work on pages that are not 404s
 * **Works With Any Theme** – runs independently of your theme and page builder
 
 = New in 1.2.0: The 404 Error Log =
@@ -51,6 +53,25 @@ From the **404 Logs** tab you can:
 * Export everything to CSV
 
 Logging stores the requested path, the referring URL, a hit count and timestamps. **No IP addresses and no user agents are recorded**, so there is nothing personally identifying in the log.
+
+= New in 1.2.1: Exclusions & Safety =
+
+Three new controls on the settings screen decide exactly which 404s the plugin touches.
+
+**Redirect Loop Protection** verifies that your redirect destination actually exists before sending visitors to it. If the destination is itself missing, the plugin steps aside and shows the normal 404 page rather than bouncing the visitor back and forth until the browser gives up.
+
+The check itself runs on a scheduled background task and whenever you save settings, never during a visitor's request, so it can never add a single millisecond to a page load. A destination that has not been checked, or cannot be checked because your host blocks internal requests, is simply treated as fine and your redirects carry on working exactly as before.
+
+**Skip Files & System Paths** keeps a real 404 for missing images, scripts, stylesheets, fonts, documents and archives, and for system paths such as `/wp-json/`, `/wp-content/`, feeds, sitemaps and `robots.txt`. Redirecting a missing image or script to an HTML page confuses browsers and crawlers, so this is on by default.
+
+**Exclusion Patterns** lets you list your own URL patterns, one per line, that should always keep a genuine 404:
+
+`/private/*
+/downloads/*.zip
+*/preview
+/campaign-?`
+
+Use `*` to match any part of a path and `?` to match a single character. Matching is against the path only, ignoring the domain and query string, and is not case sensitive. Excluded URLs are neither redirected nor logged.
 
 = Why Fix 404 Errors? =
 
@@ -121,8 +142,9 @@ If this plugin saved you time, please consider [buying me a coffee](https://buym
 2. Enter your custom redirect URL, or pick a page from the **Quick Select** dropdown
 3. Choose **301 (permanent)** for SEO, or **302 (temporary)** if the change is short-term
 4. Switch on **404 Logging** if you want to record broken links
-5. Click **Save Settings**
-6. Test by visiting a non-existent page on your site
+5. Optionally add **Exclusion Patterns** for URLs that should stay a real 404
+6. Click **Save Settings**
+7. Test by visiting a non-existent page on your site
 
 == Frequently Asked Questions ==
 
@@ -178,6 +200,22 @@ No. The plugin does nothing at all on pages that load normally. It only acts whe
 
 No. Requests for feeds, XML sitemaps, robots.txt, the REST API, XML-RPC and cron are excluded automatically and keep their real 404 status, which is what search engines and integrations expect.
 
+= What happens if my redirect destination is deleted? =
+
+Redirect Loop Protection catches it. A background task checks that the destination exists, and while it is missing visitors see the normal 404 page instead of being bounced around. The settings screen warns you when the destination is returning a 404, and re-checks it as soon as you save a corrected URL. You can switch the check off under Exclusions & Safety.
+
+= How do I stop certain URLs from being redirected? =
+
+Add them under **Exclusion Patterns** on the settings screen, one per line. Wildcards are supported: `*` matches any part of a path and `?` matches a single character. For example `/private/*` leaves everything under `/private/` as a real 404. Excluded URLs are not logged either.
+
+= Why are missing images and scripts not redirected? =
+
+Because redirecting them causes more problems than it solves. A browser asking for a missing stylesheet expects a 404, not an HTML page. The **Skip Files & System Paths** setting handles this and is on by default; you can switch it off if you really need file requests redirected too.
+
+= Does the plugin make external requests? =
+
+No. The only request it ever makes is Redirect Loop Protection checking your own site's redirect destination, and that runs on a background schedule rather than during anyone's page load. Nothing is sent to any third party.
+
 = Can I redirect different 404 pages to different URLs? =
 
 Not in this version — all 404 errors go to a single destination. The 404 log helps you identify which specific URLs deserve their own rule, which you can add with a dedicated redirect plugin or in your server config.
@@ -201,10 +239,23 @@ Deleting the plugin removes its settings and drops the log table, leaving nothin
 == Screenshots ==
 
 1. The settings screen — enable redirects, pick a destination, choose 301 or 302, and toggle 404 logging
-2. The 404 Logs tab — every broken URL with hit counts, referrers, search, and CSV export
-3. The Top 404 Errors widget showing your worst broken links at a glance
+2. The Exclusions & Safety section — loop protection, file skipping, and custom exclusion patterns
+3. The 404 Logs tab — every broken URL with hit counts, referrers, search, and CSV export
+4. The Top 404 Errors widget showing your worst broken links at a glance
 
 == Changelog ==
+
+= 1.2.1 =
+* New: **Redirect Loop Protection** – verifies the destination exists before redirecting, and shows the normal 404 if it does not. The check runs on an hourly background task and on settings save, never during a visitor's request, so it cannot slow the site down
+* New: **Skip Files & System Paths** – missing images, scripts, stylesheets, fonts, documents, archives and system paths keep a real 404
+* New: **Exclusion Patterns** – your own wildcard rules for URLs that should stay a genuine 404, never redirected or logged
+* New: toggle to show or hide the "Top 404 Errors" sidebar widget
+* Improvement: all four controls added to the settings screen under a new "Exclusions & Safety" section
+* Improvement: the cached destination check is cleared when you save settings, so a corrected URL takes effect immediately
+* Improvement: CSV export no longer needs a PHP version check now that 7.4 is the minimum
+* Improvement: uninstall also clears cached destination checks
+* Requirement: WordPress 5.0 or newer (was 4.7)
+* Requirement: PHP 7.4 or newer (was 7.0)
 
 = 1.2.0 =
 * New: 404 error logging with a dedicated **404 Logs** tab
@@ -232,12 +283,17 @@ Deleting the plugin removes its settings and drops the log table, leaving nothin
 
 == Upgrade Notice ==
 
+= 1.2.1 =
+Adds redirect loop protection, file and system path skipping, and custom exclusion patterns. Now requires WordPress 5.0+ and PHP 7.4+. Your existing settings are preserved; the new safety options default to on.
+
 = 1.2.0 =
 Adds a full 404 error log with CSV export, plus fixes for redirect loops, sitemap/feed handling, and URL sanitisation. Your existing settings are preserved and logging stays off until you enable it.
 
 == Privacy ==
 
-This plugin does not send any data to external services and makes no outbound requests.
+This plugin does not send any data to any external service.
+
+The only network request it ever makes is Redirect Loop Protection issuing a HEAD request to your own site, to confirm the redirect destination exists before visitors are sent there. It runs on a scheduled background task, no data leaves your server, and the check can be switched off on the settings screen.
 
 When 404 logging is enabled, the plugin stores the following in a table in your own database:
 

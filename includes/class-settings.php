@@ -38,7 +38,11 @@ class R404C_Settings {
             'enabled' => self::get('enabled', 'on'),
             'redirect_url' => self::get('redirect_url', home_url()),
             'redirect_type' => self::get('redirect_type', '301'),
-            'logging_enabled' => self::get('logging_enabled', 'off')
+            'logging_enabled' => self::get('logging_enabled', 'off'),
+            'loop_protection' => self::get('loop_protection', 'on'),
+            'skip_assets' => self::get('skip_assets', 'on'),
+            'show_top_widget' => self::get('show_top_widget', 'on'),
+            'exclusion_patterns' => self::get('exclusion_patterns', '')
         );
     }
     
@@ -50,6 +54,10 @@ class R404C_Settings {
         self::set('redirect_url', home_url());
         self::set('redirect_type', '301');
         self::set('logging_enabled', 'off');
+        self::set('loop_protection', 'on');
+        self::set('skip_assets', 'on');
+        self::set('show_top_widget', 'on');
+        self::set('exclusion_patterns', '');
     }
     
     /**

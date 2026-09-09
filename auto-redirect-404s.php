@@ -2,14 +2,14 @@
 /**
  * Plugin Name: Auto Redirect 404 to Custom URL
  * Description: Redirects all 404 errors to a custom URL or home page and logs every broken link. Helps fix 404 errors in Google Search Console with proper SEO redirects.
- * Version: 1.2.0
+ * Version: 1.2.1
  * Author: Nitya Saha
  * Author URI: https://nitya.codesocials.com/
  * License: GPL v2 or later
  * License URI: https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain: auto-redirect-404s
- * Requires at least: 4.7
- * Requires PHP: 7.0
+ * Requires at least: 5.0
+ * Requires PHP: 7.4
  *
  * @package Redirect404Custom
  * @since 1.0.1
@@ -21,7 +21,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('R404C_VERSION', '1.2.0');
+define('R404C_VERSION', '1.2.1');
 define('R404C_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('R404C_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('R404C_PLUGIN_FILE', __FILE__);
@@ -35,6 +35,29 @@ class R404C_Redirect_404_Custom {
      * Option storing the version the database was last prepared for.
      */
     const VERSION_OPTION = 'r404c_version';
+
+    /**
+     * Cron hook that refreshes the redirect destination check.
+     */
+    const CRON_HOOK = 'r404c_check_destination';
+
+    /**
+     * Options introduced after 1.0.x, with the value to seed them with.
+     *
+     * These are added on upgrade as well as activation so the settings screen
+     * shows real stored values rather than relying on get_option() fallbacks.
+     * Every one of them is a safety feature that defaults to on; logging is the
+     * exception and is handled separately, because switching it on for an
+     * existing site would start writing to a table nobody asked for.
+     *
+     * @var array
+     */
+    private static $feature_defaults = array(
+        'r404c_loop_protection'    => 'on',
+        'r404c_skip_assets'        => 'on',
+        'r404c_show_top_widget'    => 'on',
+        'r404c_exclusion_patterns' => '',
+    );
 
     /**
      * Plugin instance
@@ -79,6 +102,35 @@ class R404C_Redirect_404_Custom {
         }
 
         new R404C_Frontend();
+
+        // The destination check runs in the background so it can never slow a
+        // visitor's request down.
+        add_action(self::CRON_HOOK, array('R404C_Frontend', 'refresh_destination_status'));
+    }
+
+    /**
+     * Make sure the background destination check is scheduled.
+     *
+     * @return void
+     */
+    public static function schedule_events() {
+        if (!wp_next_scheduled(self::CRON_HOOK)) {
+            wp_schedule_event(time() + MINUTE_IN_SECONDS, 'hourly', self::CRON_HOOK);
+        }
+    }
+
+    /**
+     * Remove the background destination check.
+     *
+     * @return void
+     */
+    public static function unschedule_events() {
+        $timestamp = wp_next_scheduled(self::CRON_HOOK);
+
+        while ($timestamp) {
+            wp_unschedule_event($timestamp, self::CRON_HOOK);
+            $timestamp = wp_next_scheduled(self::CRON_HOOK);
+        }
     }
 
     /**
@@ -103,6 +155,12 @@ class R404C_Redirect_404_Custom {
      * working exactly as before until the administrator opts in.
      */
     public function maybe_upgrade() {
+        // Checked on every admin request, before the version short-circuit, so
+        // a cron event lost to a cleanup plugin or a restored database comes
+        // back on its own. wp_next_scheduled() reads an autoloaded option, so
+        // this costs no query.
+        self::schedule_events();
+
         $installed = get_option(self::VERSION_OPTION);
 
         if ($installed === R404C_VERSION) {
@@ -115,6 +173,8 @@ class R404C_Redirect_404_Custom {
         if (false === get_option('r404c_logging_enabled', false)) {
             add_option('r404c_logging_enabled', 'off');
         }
+
+        self::seed_feature_defaults();
 
         // Self-heal: logging is on but the table is missing (restored database,
         // network activation, manual table drop). Recreate it rather than
@@ -181,6 +241,9 @@ class R404C_Redirect_404_Custom {
             }
         }
 
+        self::seed_feature_defaults();
+        self::schedule_events();
+
         if ($is_fresh_install) {
             // New install: turn logging on and build the table.
             $logging = R404C_Logger::install_table() ? 'on' : 'off';
@@ -199,14 +262,33 @@ class R404C_Redirect_404_Custom {
     }
 
     /**
+     * Add any post-1.0.x options that are not present yet.
+     *
+     * Never overwrites a stored value, so an administrator who has switched a
+     * feature off keeps it off across updates.
+     *
+     * @return void
+     */
+    private static function seed_feature_defaults() {
+        foreach (self::$feature_defaults as $key => $value) {
+            if (false === get_option($key, false)) {
+                add_option($key, $value);
+            }
+        }
+    }
+
+    /**
      * Plugin deactivation.
      *
      * Log data and settings are intentionally left in place so deactivating and
      * reactivating loses nothing. Cleanup happens in uninstall.php.
      */
     public static function deactivate() {
-        // Nothing to tear down. Previous versions called wp_cache_flush() here,
-        // which wiped the entire site object cache for every other plugin.
+        // Settings and log data are intentionally left in place. Previous
+        // versions also called wp_cache_flush() here, which wiped the entire
+        // site object cache for every other plugin.
+        self::includes();
+        self::unschedule_events();
     }
 }
 

@@ -423,80 +423,9 @@
     background: #8c8f94;
 }
 
-/* Section header now carries the logging control on the right */
-.r404c-section-header {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 20px;
-    flex-wrap: wrap;
-}
-
+/* Card header. Kept as a wrapper so section headings stay consistent. */
 .r404c-section-heading {
-    flex: 1 1 260px;
     min-width: 0;
-}
-
-.r404c-logging-control {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    flex: 0 0 auto;
-    padding: 10px 16px;
-    border: 1px solid #e1e1e1;
-    border-radius: 6px;
-    background: #f8f9fa;
-}
-
-.r404c-logging-title {
-    font-weight: 600;
-    color: #1d2327;
-    white-space: nowrap;
-}
-
-.r404c-logging-control .r404c-toggle-container {
-    gap: 8px;
-}
-
-.r404c-logging-control .r404c-toggle-label {
-    font-size: 13px;
-    min-width: 22px;
-}
-
-.r404c-logs-link {
-    display: inline-flex;
-    align-items: center;
-    padding-left: 12px;
-    border-left: 1px solid #dcdcde;
-    font-weight: 600;
-    text-decoration: none;
-    white-space: nowrap;
-}
-
-.r404c-logs-link::after {
-    content: ' \2192';
-    margin-left: 4px;
-}
-
-/* Compact toggle variant */
-.r404c-toggle-sm {
-    width: 44px;
-    height: 22px;
-}
-
-.r404c-toggle-sm .r404c-toggle-slider {
-    border-radius: 22px;
-}
-
-.r404c-toggle-sm .r404c-toggle-slider:before {
-    height: 16px;
-    width: 16px;
-    left: 3px;
-    bottom: 3px;
-}
-
-.r404c-toggle-sm input:checked + .r404c-toggle-slider:before {
-    transform: translateX(22px);
 }
 
 /* Logs screen */
@@ -617,15 +546,6 @@
 }
 
 @media (max-width: 782px) {
-    .r404c-section-header {
-        flex-direction: column;
-    }
-
-    .r404c-logging-control {
-        width: 100%;
-        box-sizing: border-box;
-    }
-
     .r404c-logs-summary {
         gap: 24px;
     }
@@ -634,4 +554,63 @@
         margin-left: 0;
         width: 100%;
     }
+}
+
+/* ------------------------------------------------------------------
+ * Exclusions & safety (since 1.2.1)
+ * ------------------------------------------------------------------ */
+
+.r404c-patterns {
+    font-family: Consolas, Monaco, "Andale Mono", "Ubuntu Mono", monospace;
+    font-size: 13px;
+    line-height: 1.6;
+    padding: 10px 12px;
+    border: 2px solid #ddd;
+    border-radius: 4px;
+    resize: vertical;
+    min-height: 110px;
+    transition: border-color 0.3s ease;
+}
+
+.r404c-patterns:focus {
+    outline: none;
+    border-color: #4caf50;
+    box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.2);
+}
+
+.r404c-patterns::placeholder {
+    color: #a7aaad;
+}
+
+/* Give each settings block its own separation on the card. */
+.r404c-section + .r404c-section {
+    padding-top: 25px;
+    border-top: 1px solid #f0f0f0;
+}
+
+.r404c-section .form-table td .description code {
+    background: #f0f0f1;
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-size: 12px;
+}
+
+/* Destination check feedback */
+.r404c-destination-alert {
+    margin: 10px 0 6px;
+    padding: 10px 14px;
+    border-left: 4px solid #b32d2e;
+    background: #fcf0f1;
+    border-radius: 0 4px 4px 0;
+    color: #1d2327;
+}
+
+.r404c-destination-ok {
+    margin: 10px 0 6px;
+    padding: 8px 14px;
+    border-left: 4px solid #4caf50;
+    background: #f6fbf6;
+    border-radius: 0 4px 4px 0;
+    color: #46705a;
+    font-size: 13px;
 }
