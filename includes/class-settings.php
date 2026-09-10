@@ -39,8 +39,8 @@ class R404C_Settings {
             'redirect_url' => self::get('redirect_url', home_url()),
             'redirect_type' => self::get('redirect_type', '301'),
             'logging_enabled' => self::get('logging_enabled', 'off'),
-            'loop_protection' => self::get('loop_protection', 'on'),
-            'skip_assets' => self::get('skip_assets', 'on'),
+            'loop_protection' => self::get('loop_protection', 'off'),
+            'skip_assets' => self::get('skip_assets', 'off'),
             'show_top_widget' => self::get('show_top_widget', 'on'),
             'exclusion_patterns' => self::get('exclusion_patterns', '')
         );

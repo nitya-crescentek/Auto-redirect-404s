@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Auto Redirect 404 to Custom URL
  * Description: Redirects all 404 errors to a custom URL or home page and logs every broken link. Helps fix 404 errors in Google Search Console with proper SEO redirects.
- * Version: 1.2.1
+ * Version: 1.2.0
  * Author: Nitya Saha
  * Author URI: https://nitya.codesocials.com/
  * License: GPL v2 or later
@@ -21,7 +21,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('R404C_VERSION', '1.2.1');
+define('R404C_VERSION', '1.2.0');
 define('R404C_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('R404C_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('R404C_PLUGIN_FILE', __FILE__);
@@ -42,21 +42,25 @@ class R404C_Redirect_404_Custom {
     const CRON_HOOK = 'r404c_check_destination';
 
     /**
-     * Options introduced after 1.0.x, with the value to seed them with.
+     * Options introduced in 1.2.0, and the value each kind of install gets.
      *
-     * These are added on upgrade as well as activation so the settings screen
-     * shows real stored values rather than relying on get_option() fallbacks.
-     * Every one of them is a safety feature that defaults to on; logging is the
-     * exception and is handled separately, because switching it on for an
-     * existing site would start writing to a table nobody asked for.
+     * 'fresh' is a brand new activation; 'upgrade' is a site arriving from
+     * 1.0.x. The two options that change redirect behaviour are seeded off on
+     * upgrade, so an existing site keeps behaving exactly as it did before and
+     * the administrator opts in when they choose to. A fresh install gets the
+     * recommended configuration straight away.
+     *
+     * Rows are written rather than left to get_option() fallbacks, so the
+     * settings screen shows real stored values.
      *
      * @var array
      */
     private static $feature_defaults = array(
-        'r404c_loop_protection'    => 'on',
-        'r404c_skip_assets'        => 'on',
-        'r404c_show_top_widget'    => 'on',
-        'r404c_exclusion_patterns' => '',
+        'r404c_loop_protection'    => array('fresh' => 'on', 'upgrade' => 'off'),
+        'r404c_skip_assets'        => array('fresh' => 'on', 'upgrade' => 'off'),
+        // Cosmetic only, and already gated behind logging, which is opt-in.
+        'r404c_show_top_widget'    => array('fresh' => 'on', 'upgrade' => 'on'),
+        'r404c_exclusion_patterns' => array('fresh' => '',   'upgrade' => ''),
     );
 
     /**
@@ -114,8 +118,14 @@ class R404C_Redirect_404_Custom {
      * @return void
      */
     public static function schedule_events() {
-        if (!wp_next_scheduled(self::CRON_HOOK)) {
+        $wanted = (get_option('r404c_loop_protection', 'off') === 'on');
+        $next   = wp_next_scheduled(self::CRON_HOOK);
+
+        if ($wanted && !$next) {
             wp_schedule_event(time() + MINUTE_IN_SECONDS, 'hourly', self::CRON_HOOK);
+        } elseif (!$wanted && $next) {
+            // No point waking WordPress up hourly for a check nobody wants.
+            self::unschedule_events();
         }
     }
 
@@ -241,7 +251,9 @@ class R404C_Redirect_404_Custom {
             }
         }
 
-        self::seed_feature_defaults();
+        // Seed before scheduling: schedule_events() reads the loop-protection
+        // value that seeding has just written.
+        self::seed_feature_defaults($is_fresh_install);
         self::schedule_events();
 
         if ($is_fresh_install) {
@@ -269,10 +281,12 @@ class R404C_Redirect_404_Custom {
      *
      * @return void
      */
-    private static function seed_feature_defaults() {
-        foreach (self::$feature_defaults as $key => $value) {
-            if (false === get_option($key, false)) {
-                add_option($key, $value);
+    private static function seed_feature_defaults($is_fresh_install = false) {
+        $kind = $is_fresh_install ? 'fresh' : 'upgrade';
+
+        foreach (self::$feature_defaults as $option => $values) {
+            if (false === get_option($option, false)) {
+                add_option($option, $values[$kind]);
             }
         }
     }

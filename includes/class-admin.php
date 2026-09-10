@@ -252,7 +252,7 @@ class R404C_Admin {
      * PHP 8.4 deprecated relying on fputcsv()'s default $escape value, so it is
      * passed explicitly. The empty string disables PHP's non-standard backslash
      * escaping and produces spec-compliant CSV; it needs PHP 7.4, which is the
-     * plugin's minimum from 1.2.1.
+     * plugin's minimum from 1.2.0.
      *
      * @param resource $handle Open stream.
      * @param array    $row    Cell values.
@@ -375,8 +375,8 @@ class R404C_Admin {
         $redirect_url    = get_option('r404c_redirect_url', home_url());
         $redirect_type   = get_option('r404c_redirect_type', '301');
         $logging_enabled = get_option('r404c_logging_enabled', 'off');
-        $loop_protection = get_option('r404c_loop_protection', 'on');
-        $skip_assets     = get_option('r404c_skip_assets', 'on');
+        $loop_protection = get_option('r404c_loop_protection', 'off');
+        $skip_assets     = get_option('r404c_skip_assets', 'off');
         $show_top_widget = get_option('r404c_show_top_widget', 'on');
         $exclusion_patterns = (string) get_option('r404c_exclusion_patterns', '');
         $destination_status = R404C_Frontend::get_destination_status($redirect_url);

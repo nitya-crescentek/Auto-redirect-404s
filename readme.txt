@@ -5,7 +5,7 @@ Tags: 404 redirect, redirect, 301 redirect, 404 error, seo
 Requires at least: 5.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.2.1
+Stable tag: 1.2.0
 License: GPL v2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -38,7 +38,7 @@ If you are trying to clear "Not found (404)" errors out of Google Search Console
 * **Lightweight & Fast** – no bloat, no third-party services, and zero work on pages that are not 404s
 * **Works With Any Theme** – runs independently of your theme and page builder
 
-= New in 1.2.0: The 404 Error Log =
+= The 404 Error Log =
 
 Turn on **404 Logging** from the settings screen and the plugin starts recording every broken URL on your site.
 
@@ -54,15 +54,15 @@ From the **404 Logs** tab you can:
 
 Logging stores the requested path, the referring URL, a hit count and timestamps. **No IP addresses and no user agents are recorded**, so there is nothing personally identifying in the log.
 
-= New in 1.2.1: Exclusions & Safety =
+= Exclusions & Safety =
 
-Three new controls on the settings screen decide exactly which 404s the plugin touches.
+Three controls on the settings screen decide exactly which 404s the plugin touches. On a new install they are switched on for you. If you are updating from an earlier version they start switched off, so your site keeps behaving exactly as it did until you choose to enable them.
 
 **Redirect Loop Protection** verifies that your redirect destination actually exists before sending visitors to it. If the destination is itself missing, the plugin steps aside and shows the normal 404 page rather than bouncing the visitor back and forth until the browser gives up.
 
 The check itself runs on a scheduled background task and whenever you save settings, never during a visitor's request, so it can never add a single millisecond to a page load. A destination that has not been checked, or cannot be checked because your host blocks internal requests, is simply treated as fine and your redirects carry on working exactly as before.
 
-**Skip Files & System Paths** keeps a real 404 for missing images, scripts, stylesheets, fonts, documents and archives, and for system paths such as `/wp-json/`, `/wp-content/`, feeds, sitemaps and `robots.txt`. Redirecting a missing image or script to an HTML page confuses browsers and crawlers, so this is on by default.
+**Skip Files & System Paths** keeps a real 404 for missing images, scripts, stylesheets, fonts, documents and archives, and for system paths such as `/wp-json/`, `/wp-content/`, feeds, sitemaps and `robots.txt`. Redirecting a missing image or script to an HTML page confuses browsers and crawlers, so this is switched on for new installs and recommended for everyone else.
 
 **Exclusion Patterns** lets you list your own URL patterns, one per line, that should always keep a genuine 404:
 
@@ -245,35 +245,40 @@ Deleting the plugin removes its settings and drops the log table, leaving nothin
 
 == Changelog ==
 
-= 1.2.1 =
-* New: **Redirect Loop Protection** – verifies the destination exists before redirecting, and shows the normal 404 if it does not. The check runs on an hourly background task and on settings save, never during a visitor's request, so it cannot slow the site down
-* New: **Skip Files & System Paths** – missing images, scripts, stylesheets, fonts, documents, archives and system paths keep a real 404
-* New: **Exclusion Patterns** – your own wildcard rules for URLs that should stay a genuine 404, never redirected or logged
+= 1.2.0 =
+
+**404 Error Logging**
+
+* New: optional 404 logging with a dedicated **404 Logs** tab on the settings screen
+* New: each unique URL is stored once with a hit counter, referrer, and first/last seen timestamps
+* New: sort, search, paginate, delete individual entries, bulk delete, and clear the whole log
+* New: CSV export of the full log
+* New: "Top 404 Errors" widget on the settings sidebar showing your five worst broken links
+* Privacy: no IP addresses and no user agents are recorded
+* Safety: the log table is hard-capped at 1,000 rows and trims itself, so a bot scan cannot bloat your database
+
+**Exclusions & Safety**
+
+* New: **Redirect Loop Protection** verifies the destination exists before redirecting, and shows the normal 404 if it does not. The check runs on an hourly background task and on settings save, never during a visitor's request, so it cannot slow the site down
+* New: **Skip Files & System Paths** keeps a real 404 for missing images, scripts, stylesheets, fonts, documents, archives and system paths
+* New: **Exclusion Patterns** for your own wildcard rules for URLs that should stay a genuine 404, never redirected or logged
 * New: toggle to show or hide the "Top 404 Errors" sidebar widget
-* Improvement: all four controls added to the settings screen under a new "Exclusions & Safety" section
-* Improvement: the cached destination check is cleared when you save settings, so a corrected URL takes effect immediately
-* Improvement: CSV export no longer needs a PHP version check now that 7.4 is the minimum
-* Improvement: uninstall also clears cached destination checks
+* Note: on an existing install the two behaviour-changing options above start switched off, so nothing changes until you enable them. New installs get them on
+
+**Fixes and hardening**
+
+* Fixed: the activation routine never actually ran, so default options were never written. Upgrades are now handled on admin load, which is what reaches sites updated through the WordPress updater
+* Fixed: removed a "same as your current site URL" confirmation dialog that appeared on every save. It compared hostnames only, so pointing 404s at your own homepage, the recommended setup, always triggered it
+* Fixed: redirect loops caused by http/https, trailing-slash and query-string differences between the request and the destination
+* Fixed: feeds, sitemaps, robots.txt, REST API and cron requests are no longer redirected and keep their real 404 status
+* Fixed: activation and deactivation no longer call wp_cache_flush(), which wiped the entire site object cache for every other plugin
+* Security: the redirect URL is now validated against an http/https allowlist, rejecting javascript:, data: and other unsafe schemes
+* Security: CSV export escapes formula characters to prevent spreadsheet formula injection
+* Security: all log queries use prepared statements, with sorting constrained to a fixed allowlist
+* New: uninstall.php removes all options and the log table, with multisite support
+* New: three filters for developers — r404c_should_redirect, r404c_should_log and r404c_exclude_request
 * Requirement: WordPress 5.0 or newer (was 4.7)
 * Requirement: PHP 7.4 or newer (was 7.0)
-
-= 1.2.0 =
-* New: 404 error logging with a dedicated **404 Logs** tab
-* New: enable/disable toggle for logging plus a "View Logs" link on the settings screen
-* New: sortable, searchable log table with single, bulk, and clear-all deletion
-* New: CSV export of the full 404 log
-* New: "Top 404 Errors" widget on the settings sidebar
-* New: `r404c_should_redirect`, `r404c_should_log` and `r404c_exclude_request` filters for developers
-* Fix: default options were never written because the activation hook was registered too late
-* Fix: redirect loops when the destination differed only by scheme, trailing slash, or query string
-* Fix: feeds, XML sitemaps, robots.txt, REST API, XML-RPC and cron requests are no longer redirected
-* Fix: non-GET requests are no longer redirected
-* Security: the redirect URL is now stored through `esc_url_raw()` and restricted to http and https
-* Security: escaped plugin row meta output and removed HTML from translatable strings
-* Security: CSV export guards against spreadsheet formula injection
-* Improvement: no longer flushes the entire site object cache on activation and deactivation
-* Improvement: added `uninstall.php` so options and the log table are removed on deletion
-* Improvement: admin script is no longer loaded on the logs screen
 
 = 1.0.1 =
 * Compatibility updates
@@ -283,11 +288,8 @@ Deleting the plugin removes its settings and drops the log table, leaving nothin
 
 == Upgrade Notice ==
 
-= 1.2.1 =
-Adds redirect loop protection, file and system path skipping, and custom exclusion patterns. Now requires WordPress 5.0+ and PHP 7.4+. Your existing settings are preserved; the new safety options default to on.
-
 = 1.2.0 =
-Adds a full 404 error log with CSV export, plus fixes for redirect loops, sitemap/feed handling, and URL sanitisation. Your existing settings are preserved and logging stays off until you enable it.
+Adds optional 404 error logging, redirect loop protection, file and system path skipping, and custom exclusion patterns. Also fixes several redirect-loop and security issues. Your existing settings are preserved and the new options start switched off, so nothing changes until you enable them. Now requires WordPress 5.0+ and PHP 7.4+.
 
 == Privacy ==
 

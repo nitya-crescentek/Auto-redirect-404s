@@ -83,14 +83,12 @@
                     isValid = false;
                 }
 
-                // Check if redirect URL is the same as current site
-                if (url && self.isSameAsCurrent(url)) {
-                    if (!confirm('The redirect URL is the same as your current site URL. This might cause redirect loops. Are you sure you want to continue?')) {
-                        e.preventDefault();
-                        isValid = false;
-                    }
-                }
-
+                // No same-site warning here. Pointing 404s at your own homepage
+                // is the normal, recommended setup, and the old check compared
+                // hostnames only, so it fired on every save. Genuine loops are
+                // caught server-side: the request and destination are compared
+                // by host and path, and Redirect Loop Protection verifies the
+                // destination is not itself a 404.
                 return isValid;
             });
         },
@@ -153,24 +151,6 @@
             }
         },
 
-        /**
-         * Check if URL is same as current site
-         */
-        isSameAsCurrent: function(url) {
-            try {
-                // Add protocol if missing
-                if (!url.match(/^https?:\/\//)) {
-                    url = 'http://' + url;
-                }
-                
-                var inputUrl = new URL(url);
-                var homeUrl = new URL(r404c_ajax.home_url);
-                
-                return inputUrl.hostname === homeUrl.hostname;
-            } catch (e) {
-                return false;
-            }
-        },
 
         /**
          * Show error message

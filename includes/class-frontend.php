@@ -198,7 +198,7 @@ class R404C_Frontend {
      * @return bool
      */
     private function is_skipped_path($path) {
-        if (get_option('r404c_skip_assets', 'on') !== 'on') {
+        if (get_option('r404c_skip_assets', 'off') !== 'on') {
             return false;
         }
 
@@ -306,7 +306,7 @@ class R404C_Frontend {
      * @return bool True only when the destination is known to be missing.
      */
     private function destination_is_broken($redirect_url) {
-        if (get_option('r404c_loop_protection', 'on') !== 'on') {
+        if (get_option('r404c_loop_protection', 'off') !== 'on') {
             return false;
         }
 
@@ -339,7 +339,7 @@ class R404C_Frontend {
 
         $redirect_url = (string) $redirect_url;
 
-        if ('' === $redirect_url || get_option('r404c_loop_protection', 'on') !== 'on') {
+        if ('' === $redirect_url || get_option('r404c_loop_protection', 'off') !== 'on') {
             return null;
         }
 
