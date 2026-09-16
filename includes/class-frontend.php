@@ -117,7 +117,13 @@ class R404C_Frontend {
         // Log the redirect for debugging (only when WP_DEBUG is on)
         $this->maybe_log_redirect($current_url, $redirect_url);
 
-        // Perform redirect
+        // wp_safe_redirect() is deliberately not used. The whole point of this
+        // plugin is sending 404s to a destination the administrator chose, which
+        // is allowed to be an external site, and wp_safe_redirect() would rewrite
+        // any off-site destination back to wp-admin. The value is not user input:
+        // it comes from an option only a manage_options user can set, and it is
+        // validated against an http/https allowlist by R404C_Admin::sanitize_url().
+        // phpcs:ignore WordPress.Security.SafeRedirect.wp_redirect_wp_redirect
         wp_redirect($redirect_url, $redirect_code);
         exit;
     }

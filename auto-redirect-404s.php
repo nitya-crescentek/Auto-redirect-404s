@@ -1,6 +1,6 @@
 <?php
 /**
- * Plugin Name: Auto Redirect 404 to Custom URL
+ * Plugin Name: Auto Redirect 404 to Custom URL - 404 Redirect & Error Log
  * Description: Redirects all 404 errors to a custom URL or home page and logs every broken link. Helps fix 404 errors in Google Search Console with proper SEO redirects.
  * Version: 1.2.0
  * Author: Nitya Saha

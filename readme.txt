@@ -238,10 +238,8 @@ Deleting the plugin removes its settings and drops the log table, leaving nothin
 
 == Screenshots ==
 
-1. The settings screen — enable redirects, pick a destination, choose 301 or 302, and toggle 404 logging
-2. The Exclusions & Safety section — loop protection, file skipping, and custom exclusion patterns
-3. The 404 Logs tab — every broken URL with hit counts, referrers, search, and CSV export
-4. The Top 404 Errors widget showing your worst broken links at a glance
+1. The settings screen
+2. The 404 Logs screen
 
 == Changelog ==
 
@@ -289,7 +287,7 @@ Deleting the plugin removes its settings and drops the log table, leaving nothin
 == Upgrade Notice ==
 
 = 1.2.0 =
-Adds optional 404 error logging, redirect loop protection, file and system path skipping, and custom exclusion patterns. Also fixes several redirect-loop and security issues. Your existing settings are preserved and the new options start switched off, so nothing changes until you enable them. Now requires WordPress 5.0+ and PHP 7.4+.
+Adds optional 404 error logging, redirect loop protection, file and system path skipping, and custom exclusion patterns. Your existing settings are preserved and the new options start switched off, so nothing changes until you enable them. Now requires WordPress 5.0+ and PHP 7.4+.
 
 == Privacy ==
 

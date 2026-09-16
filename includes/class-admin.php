@@ -225,6 +225,9 @@ class R404C_Admin {
         header('Content-Type: text/csv; charset=' . get_option('blog_charset'));
         header('Content-Disposition: attachment; filename="' . $filename . '"');
 
+        // php://output is the response body, not a file on disk, so WP_Filesystem
+        // does not apply here. This streams the CSV straight to the browser.
+        // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fopen
         $output = fopen('php://output', 'w');
 
         $this->write_csv_row($output, array('URL', 'Hits', 'Referrer', 'First Seen', 'Last Seen'));
@@ -242,6 +245,7 @@ class R404C_Admin {
             );
         }
 
+        // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose
         fclose($output);
         exit;
     }
@@ -487,7 +491,11 @@ class R404C_Admin {
 
         $exclusion_patterns = '';
         if (isset($_POST['r404c_exclusion_patterns'])) {
-            // wp_unslash only here; sanitize_patterns() cleans each line.
+            // A textarea holding one pattern per line, so it cannot be flattened
+            // with sanitize_text_field() here without destroying the newlines.
+            // sanitize_patterns() unslashes nothing and sanitises every line
+            // individually, capping length and count.
+            // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- sanitize_patterns() sanitises each line.
             $exclusion_patterns = $this->sanitize_patterns(wp_unslash($_POST['r404c_exclusion_patterns']));
         }
 

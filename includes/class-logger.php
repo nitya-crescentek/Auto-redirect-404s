@@ -15,6 +15,16 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+// Every query below targets this plugin's own custom table. A table name is an
+// identifier, and $wpdb->prepare() cannot parameterise identifiers, so it has to
+// be interpolated. All caller-supplied values are still passed as placeholders,
+// and ORDER BY columns are constrained to a fixed allowlist by sanitize_orderby().
+// Object caching is not applicable: these are admin-screen reads and per-request
+// writes against a log table that changes on every 404.
+// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery
+// phpcs:disable WordPress.DB.DirectDatabaseQuery.NoCaching
+// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+
 /**
  * Logger class
  */
@@ -81,7 +91,6 @@ class R404C_Logger {
         global $wpdb;
         $table = self::table_name();
 
-        // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- schema check, cached per request below.
         $found = $wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $wpdb->esc_like($table)));
 
         self::$table_exists = ($found === $table);
@@ -183,15 +192,13 @@ class R404C_Logger {
         // the visitor's request or print SQL errors onto the page.
         $suppress = $wpdb->suppress_errors(true);
 
-        // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
         $existing_id = $wpdb->get_var(
             $wpdb->prepare("SELECT id FROM {$table} WHERE url_hash = %s LIMIT 1", $hash)
         );
 
         if ($existing_id) {
             // hit_count must increment atomically, so this cannot use $wpdb->update().
-            // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-            $wpdb->query(
+                $wpdb->query(
                 $wpdb->prepare(
                     "UPDATE {$table} SET hit_count = hit_count + 1, last_seen = %s, referrer = %s WHERE id = %d",
                     $now,
@@ -204,7 +211,6 @@ class R404C_Logger {
             return;
         }
 
-        // phpcs:ignore WordPress.DB.DirectDatabaseQuery
         $inserted = $wpdb->insert(
             $table,
             array(
@@ -243,7 +249,6 @@ class R404C_Logger {
         global $wpdb;
         $table = self::table_name();
 
-        // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
         $total = (int) $wpdb->get_var("SELECT COUNT(*) FROM {$table}");
 
         if ($total <= self::MAX_ROWS) {
@@ -260,7 +265,6 @@ class R404C_Logger {
         //
         // The inner query is wrapped in a derived table because MySQL cannot
         // read from the same table it is deleting from in a plain subquery.
-        // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
         $wpdb->query(
             $wpdb->prepare(
                 "DELETE FROM {$table} WHERE id NOT IN (
@@ -304,30 +308,45 @@ class R404C_Logger {
             )
         );
 
-        $orderby = self::sanitize_orderby($args['orderby']);
-        $order   = strtoupper($args['order']) === 'ASC' ? 'ASC' : 'DESC';
+        // sanitize_orderby() already constrains this to a fixed allowlist of
+        // column names; esc_sql() makes that guarantee explicit to static
+        // analysis as well as to the reader.
+        $orderby = esc_sql(self::sanitize_orderby($args['orderby']));
+        $order   = esc_sql(strtoupper($args['order']) === 'ASC' ? 'ASC' : 'DESC');
 
         $per_page = max(1, min(self::MAX_ROWS, (int) $args['per_page']));
         $offset   = max(0, ((int) $args['paged'] - 1) * $per_page);
 
-        $where  = '1=1';
-        $params = array();
-
+        // Two explicit branches rather than one query assembled in a variable:
+        // every call to prepare() below receives a string literal, which is what
+        // both the sniffs and a human reviewer need in order to verify it.
+        // $orderby and $order are constrained to a fixed allowlist above.
         if ('' !== $args['search']) {
-            $like    = '%' . $wpdb->esc_like($args['search']) . '%';
-            $where  .= ' AND (url LIKE %s OR referrer LIKE %s)';
-            $params[] = $like;
-            $params[] = $like;
+            $like = '%' . $wpdb->esc_like($args['search']) . '%';
+
+            return $wpdb->get_results(
+                $wpdb->prepare(
+                    "SELECT * FROM {$table}
+                     WHERE url LIKE %s OR referrer LIKE %s
+                     ORDER BY {$orderby} {$order}, id DESC
+                     LIMIT %d OFFSET %d",
+                    $like,
+                    $like,
+                    $per_page,
+                    $offset
+                )
+            );
         }
 
-        $params[] = $per_page;
-        $params[] = $offset;
-
-        // $orderby and $order are constrained to a fixed allowlist above.
-        $sql = "SELECT * FROM {$table} WHERE {$where} ORDER BY {$orderby} {$order}, id DESC LIMIT %d OFFSET %d";
-
-        // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-        return $wpdb->get_results($wpdb->prepare($sql, $params));
+        return $wpdb->get_results(
+            $wpdb->prepare(
+                "SELECT * FROM {$table}
+                 ORDER BY {$orderby} {$order}, id DESC
+                 LIMIT %d OFFSET %d",
+                $per_page,
+                $offset
+            )
+        );
     }
 
     /**
@@ -345,13 +364,11 @@ class R404C_Logger {
         $table = self::table_name();
 
         if ('' === $search) {
-            // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-            return (int) $wpdb->get_var("SELECT COUNT(*) FROM {$table}");
+                return (int) $wpdb->get_var("SELECT COUNT(*) FROM {$table}");
         }
 
         $like = '%' . $wpdb->esc_like($search) . '%';
 
-        // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
         return (int) $wpdb->get_var(
             $wpdb->prepare(
                 "SELECT COUNT(*) FROM {$table} WHERE url LIKE %s OR referrer LIKE %s",
@@ -374,7 +391,6 @@ class R404C_Logger {
         global $wpdb;
         $table = self::table_name();
 
-        // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
         return (int) $wpdb->get_var("SELECT SUM(hit_count) FROM {$table}");
     }
 
@@ -393,7 +409,6 @@ class R404C_Logger {
         $table = self::table_name();
         $limit = max(1, min(50, (int) $limit));
 
-        // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
         return $wpdb->get_results(
             $wpdb->prepare("SELECT url, hit_count FROM {$table} ORDER BY hit_count DESC, last_seen DESC LIMIT %d", $limit)
         );
@@ -420,8 +435,8 @@ class R404C_Logger {
 
         $placeholders = implode(',', array_fill(0, count($ids), '%d'));
 
-        // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
         return (int) $wpdb->query(
+            // phpcs:ignore WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare -- $placeholders is built above as one %d per id.
             $wpdb->prepare("DELETE FROM {$table} WHERE id IN ({$placeholders})", $ids)
         );
     }
@@ -439,7 +454,6 @@ class R404C_Logger {
         global $wpdb;
         $table = self::table_name();
 
-        // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
         return false !== $wpdb->query("DELETE FROM {$table}");
     }
 

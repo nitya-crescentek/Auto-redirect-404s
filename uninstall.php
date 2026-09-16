@@ -39,18 +39,28 @@ function r404c_uninstall_site() {
         delete_option($option);
     }
 
-    $table = $wpdb->prefix . 'r404c_logs';
+    // A table name is an identifier, so prepare() cannot parameterise it.
+    // esc_sql() on a value built purely from $wpdb->prefix and a literal.
+    $table = esc_sql($wpdb->prefix . 'r404c_logs');
 
-    // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table name cannot be parameterised.
+    // Dropping the plugin's own table is the whole point of an uninstall
+    // routine, so the schema-change warning is expected here.
+    // phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery
+    // phpcs:disable WordPress.DB.DirectDatabaseQuery.NoCaching
+    // phpcs:disable WordPress.DB.DirectDatabaseQuery.SchemaChange
+    // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared
     $wpdb->query("DROP TABLE IF EXISTS {$table}");
 
     // Loop-protection results are cached as transients keyed by destination.
-    // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
     $wpdb->query(
         "DELETE FROM {$wpdb->options}
          WHERE option_name LIKE '\_transient\_r404c\_dest\_%'
             OR option_name LIKE '\_transient\_timeout\_r404c\_dest\_%'"
     );
+    // phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+    // phpcs:enable WordPress.DB.DirectDatabaseQuery.SchemaChange
+    // phpcs:enable WordPress.DB.DirectDatabaseQuery.NoCaching
+    // phpcs:enable WordPress.DB.DirectDatabaseQuery.DirectQuery
 }
 
 if (is_multisite()) {

@@ -284,19 +284,19 @@ if (!defined('ABSPATH')) {
 
         <div class="r404c-sidebar">
             <?php
-            $show_widget = ('on' === $logging_enabled) && ('on' === $show_top_widget);
-            $top_404s    = $show_widget ? R404C_Logger::get_top(5) : array();
-            if (!empty($top_404s)) :
+            $r404c_show_widget = ('on' === $logging_enabled) && ('on' === $show_top_widget);
+            $r404c_top_404s    = $r404c_show_widget ? R404C_Logger::get_top(5) : array();
+            if (!empty($r404c_top_404s)) :
                 ?>
                 <div class="r404c-sidebar-box r404c-top-box">
                     <h3><?php esc_html_e('Top 404 Errors', 'auto-redirect-404s'); ?></h3>
                     <ul class="r404c-top-list">
-                        <?php foreach ($top_404s as $top) : ?>
+                        <?php foreach ($r404c_top_404s as $r404c_top) : ?>
                             <li>
-                                <a href="<?php echo esc_url(home_url($top->url)); ?>" target="_blank" rel="noopener noreferrer" title="<?php echo esc_attr($top->url); ?>">
-                                    <?php echo esc_html($top->url); ?>
+                                <a href="<?php echo esc_url(home_url($r404c_top->url)); ?>" target="_blank" rel="noopener noreferrer" title="<?php echo esc_attr($r404c_top->url); ?>">
+                                    <?php echo esc_html($r404c_top->url); ?>
                                 </a>
-                                <span class="r404c-top-hits"><?php echo esc_html(number_format_i18n((int) $top->hit_count)); ?></span>
+                                <span class="r404c-top-hits"><?php echo esc_html(number_format_i18n((int) $r404c_top->hit_count)); ?></span>
                             </li>
                         <?php endforeach; ?>
                     </ul>
