@@ -1,8 +1,8 @@
 <?php
 /**
- * Plugin Name: Auto Redirect 404 to Custom URL - 404 Redirect & Error Log
- * Description: Redirects all 404 errors to a custom URL or home page and logs every broken link. Helps fix 404 errors in Google Search Console with proper SEO redirects.
- * Version: 1.2.0
+ * Plugin Name: Auto Redirect 404s – 301 Redirect Manager & 404 Monitor
+ * Description: Redirect every 404 to a custom URL or your homepage, manage 301/302/307/308/410 redirects with exact, wildcard and regex rules, and monitor every broken link with a 404 log. Fix Google Search Console 404 errors with SEO-friendly redirects.
+ * Version: 1.3.0
  * Author: Nitya Saha
  * Author URI: https://nitya.codesocials.com/
  * License: GPL v2 or later
@@ -21,7 +21,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('R404C_VERSION', '1.2.0');
+define('R404C_VERSION', '1.3.0');
 define('R404C_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('R404C_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('R404C_PLUGIN_FILE', __FILE__);
@@ -148,11 +148,13 @@ class R404C_Redirect_404_Custom {
      */
     public static function includes() {
         require_once R404C_PLUGIN_DIR . 'includes/class-logger.php';
+        require_once R404C_PLUGIN_DIR . 'includes/class-redirects.php';
         require_once R404C_PLUGIN_DIR . 'includes/class-settings.php';
         require_once R404C_PLUGIN_DIR . 'includes/class-frontend.php';
 
         if (is_admin()) {
             require_once R404C_PLUGIN_DIR . 'includes/class-logs-table.php';
+            require_once R404C_PLUGIN_DIR . 'includes/class-redirects-table.php';
             require_once R404C_PLUGIN_DIR . 'includes/class-admin.php';
         }
     }
@@ -185,6 +187,10 @@ class R404C_Redirect_404_Custom {
         }
 
         self::seed_feature_defaults();
+
+        // 1.3.0: the Redirection Manager table. Empty until the first rule is
+        // added, and never read on the frontend until then either.
+        self::install_redirects();
 
         // Self-heal: logging is on but the table is missing (restored database,
         // network activation, manual table drop). Recreate it rather than
@@ -255,6 +261,7 @@ class R404C_Redirect_404_Custom {
         // value that seeding has just written.
         self::seed_feature_defaults($is_fresh_install);
         self::schedule_events();
+        self::install_redirects();
 
         if ($is_fresh_install) {
             // New install: turn logging on and build the table.
@@ -271,6 +278,19 @@ class R404C_Redirect_404_Custom {
         }
 
         update_option(self::VERSION_OPTION, R404C_VERSION, false);
+    }
+
+    /**
+     * Make sure the Redirection Manager table exists and its cache is current.
+     *
+     * @return void
+     */
+    private static function install_redirects() {
+        if (!R404C_Redirects::table_exists(true)) {
+            R404C_Redirects::install_table();
+        }
+
+        R404C_Redirects::rebuild_cache();
     }
 
     /**

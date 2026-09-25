@@ -24,10 +24,81 @@
          * Initialize
          */
         init: function() {
-            this.setupQuickSelect();
-            this.setupFormValidation();
             this.setupToggleLabels();
-            this.setupUrlPreview();
+
+            // Settings tab
+            if ($('#r404c_redirect_url').length) {
+                this.setupQuickSelect();
+                this.setupFormValidation();
+                this.setupUrlPreview();
+            }
+
+            // Redirection Manager tab
+            if ($('#r404c-redirect-form').length) {
+                this.setupRedirectForm();
+            }
+        },
+
+        /**
+         * Add / edit redirect form: match type hints, 410 handling and the
+         * page picker for the target.
+         */
+        setupRedirectForm: function() {
+            var self = this;
+            var i18n = (window.r404c_ajax && r404c_ajax.i18n) || {};
+            var $form = $('#r404c-redirect-form form');
+            var $source = $('#r404c_source_url');
+            var $match = $('#r404c_match_type');
+            var $hint = $('#r404c_match_hint');
+            var $code = $('#r404c_status_code');
+            var $target = $('#r404c_target_url');
+            var $quick = $('#r404c_target_quick_select');
+
+            function refreshHint() {
+                var $option = $match.find(':selected');
+                $hint.text($option.data('hint') || '');
+                $source.attr('placeholder', $option.data('placeholder') || '');
+            }
+
+            // A 410 answers "gone" instead of redirecting, so it has no target.
+            function refreshTarget() {
+                var gone = '410' === $code.val();
+                $target.prop('disabled', gone);
+                $quick.prop('disabled', gone);
+                $('.r404c-target-field').toggleClass('is-disabled', gone);
+            }
+
+            $match.on('change', refreshHint);
+            $code.on('change', refreshTarget);
+
+            $quick.on('change', function() {
+                var url = $(this).val();
+                if (url) {
+                    $target.val(url).trigger('input').focus();
+                    $(this).val('');
+                }
+            });
+
+            $form.on('submit', function(e) {
+                if (!$.trim($source.val())) {
+                    e.preventDefault();
+                    self.showError(i18n.source_required || 'Enter the source URL.');
+                    $source.focus();
+                    return false;
+                }
+
+                if ('410' !== $code.val() && !$.trim($target.val())) {
+                    e.preventDefault();
+                    self.showError(i18n.target_required || 'Enter the target URL.');
+                    $target.focus();
+                    return false;
+                }
+
+                return true;
+            });
+
+            refreshHint();
+            refreshTarget();
         },
 
         /**
@@ -72,7 +143,7 @@
             });
 
             // Form submission validation
-            $('form').on('submit', function(e) {
+            $('#r404c_redirect_url').closest('form').on('submit', function(e) {
                 var isValid = true;
                 var url = $('#r404c_redirect_url').val().trim();
                 
@@ -157,7 +228,7 @@
          */
         showError: function(message) {
             var $notice = $('<div class="notice notice-error is-dismissible"><p>' + message + '</p></div>');
-            $('.wrap h1').after($notice);
+            $('.wp-header-end').after($notice);
             
             // Auto-hide after 5 seconds
             setTimeout(function() {
@@ -172,7 +243,7 @@
          */
         showSuccess: function(message) {
             var $notice = $('<div class="notice notice-success is-dismissible"><p>' + message + '</p></div>');
-            $('.wrap h1').after($notice);
+            $('.wp-header-end').after($notice);
             
             // Auto-hide after 5 seconds
             setTimeout(function() {

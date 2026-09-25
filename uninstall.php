@@ -3,7 +3,8 @@
  * Uninstall routine.
  *
  * Runs only when the administrator deletes the plugin, never on deactivation.
- * Removes the options and the log table so nothing is left behind.
+ * Removes the options, the log table and the redirects table so nothing is
+ * left behind.
  *
  * @package Redirect404Custom
  * @since 1.2.0
@@ -33,6 +34,9 @@ function r404c_uninstall_site() {
         'r404c_exclusion_patterns',
         'r404c_version',
         'r404c_db_version',
+        'r404c_redirects_db_version',
+        'r404c_redirect_index',
+        'r404c_redirect_patterns',
     );
 
     foreach ($options as $option) {
@@ -41,7 +45,8 @@ function r404c_uninstall_site() {
 
     // A table name is an identifier, so prepare() cannot parameterise it.
     // esc_sql() on a value built purely from $wpdb->prefix and a literal.
-    $table = esc_sql($wpdb->prefix . 'r404c_logs');
+    $table           = esc_sql($wpdb->prefix . 'r404c_logs');
+    $redirects_table = esc_sql($wpdb->prefix . 'r404c_redirects');
 
     // Dropping the plugin's own table is the whole point of an uninstall
     // routine, so the schema-change warning is expected here.
@@ -50,6 +55,7 @@ function r404c_uninstall_site() {
     // phpcs:disable WordPress.DB.DirectDatabaseQuery.SchemaChange
     // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared
     $wpdb->query("DROP TABLE IF EXISTS {$table}");
+    $wpdb->query("DROP TABLE IF EXISTS {$redirects_table}");
 
     // Loop-protection results are cached as transients keyed by destination.
     $wpdb->query(

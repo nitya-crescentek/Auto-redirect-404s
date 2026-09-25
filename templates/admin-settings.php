@@ -18,6 +18,8 @@
  * @var string $settings_url    URL of the settings tab.
  * @var string $logs_url        URL of the logs tab.
  * @var array  $pages           Published pages for the quick-select dropdown.
+ *
+ * Plus the header variables documented in partials/admin-header.php.
  */
 
 // Prevent direct access
@@ -26,22 +28,10 @@ if (!defined('ABSPATH')) {
 }
 ?>
 
-<div class="wrap">
-    <h1><?php esc_html_e('404 Redirect Settings', 'auto-redirect-404s'); ?></h1>
+<div class="wrap r404c-wrap">
+    <?php include R404C_PLUGIN_DIR . 'templates/partials/admin-header.php'; ?>
 
     <?php settings_errors('r404c_messages'); ?>
-
-    <h2 class="nav-tab-wrapper r404c-tabs">
-        <a href="<?php echo esc_url($settings_url); ?>" class="nav-tab nav-tab-active">
-            <?php esc_html_e('Settings', 'auto-redirect-404s'); ?>
-        </a>
-        <a href="<?php echo esc_url($logs_url); ?>" class="nav-tab">
-            <?php esc_html_e('404 Logs', 'auto-redirect-404s'); ?>
-            <?php if ($log_count > 0) : ?>
-                <span class="r404c-count"><?php echo esc_html(number_format_i18n($log_count)); ?></span>
-            <?php endif; ?>
-        </a>
-    </h2>
 
     <div class="r404c-container">
         <div class="r404c-main-content">
@@ -51,15 +41,15 @@ if (!defined('ABSPATH')) {
                 <div class="r404c-section">
                     <div class="r404c-section-header">
                         <div class="r404c-section-heading">
-                            <h2><?php esc_html_e('Redirect Configuration', 'auto-redirect-404s'); ?></h2>
-                            <p class="description"><?php esc_html_e('Configure how 404 errors should be handled on your website.', 'auto-redirect-404s'); ?></p>
+                            <h2><?php esc_html_e('404 Auto Redirect', 'auto-redirect-404s'); ?></h2>
+                            <p class="description"><?php esc_html_e('Send every 404 that no Redirection Manager rule catches to one destination, such as your homepage.', 'auto-redirect-404s'); ?></p>
                         </div>
                     </div>
 
                     <table class="form-table">
                         <tr>
                             <th scope="row">
-                                <label for="r404c_enabled"><?php esc_html_e('Enable Redirects', 'auto-redirect-404s'); ?></label>
+                                <label for="r404c_enabled"><?php esc_html_e('Enable 404 Redirects', 'auto-redirect-404s'); ?></label>
                             </th>
                             <td>
                                 <div class="r404c-toggle-container">
@@ -73,7 +63,7 @@ if (!defined('ABSPATH')) {
                                     </label>
                                     <span class="r404c-toggle-label" data-on="<?php esc_attr_e('Enabled', 'auto-redirect-404s'); ?>" data-off="<?php esc_attr_e('Disabled', 'auto-redirect-404s'); ?>"></span>
                                 </div>
-                                <p class="description"><?php esc_html_e('Toggle this to enable or disable 404 redirects.', 'auto-redirect-404s'); ?></p>
+                                <p class="description"><?php esc_html_e('Toggle the catch-all 404 redirect on or off. Rules in the Redirection Manager keep working either way.', 'auto-redirect-404s'); ?></p>
                             </td>
                         </tr>
 
@@ -309,9 +299,9 @@ if (!defined('ABSPATH')) {
             <div class="r404c-sidebar-box">
                 <h3><?php esc_html_e('How it Works', 'auto-redirect-404s'); ?></h3>
                 <ul>
-                    <li><?php esc_html_e('When a visitor accesses a non-existent page, they get a 404 error', 'auto-redirect-404s'); ?></li>
-                    <li><?php esc_html_e('This plugin automatically redirects them to your chosen URL', 'auto-redirect-404s'); ?></li>
-                    <li><?php esc_html_e('This improves user experience and helps with SEO', 'auto-redirect-404s'); ?></li>
+                    <li><?php esc_html_e('Redirection Manager rules run first, sending specific old URLs to their new home', 'auto-redirect-404s'); ?></li>
+                    <li><?php esc_html_e('Any other 404 is sent to the catch-all destination on this screen', 'auto-redirect-404s'); ?></li>
+                    <li><?php esc_html_e('The 404 Monitor logs what is still broken, so you can turn it into a redirect in one click', 'auto-redirect-404s'); ?></li>
                 </ul>
             </div>
 
@@ -320,6 +310,7 @@ if (!defined('ABSPATH')) {
                 <ul>
                     <li><?php esc_html_e('Reduces bounce rate from 404 errors', 'auto-redirect-404s'); ?></li>
                     <li><?php esc_html_e('Helps with Google Search Console reports', 'auto-redirect-404s'); ?></li>
+                    <li><?php esc_html_e('Passes link equity from old URLs with 301 redirects', 'auto-redirect-404s'); ?></li>
                     <li><?php esc_html_e('Keeps visitors on your site longer', 'auto-redirect-404s'); ?></li>
                 </ul>
             </div>

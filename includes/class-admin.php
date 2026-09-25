@@ -27,29 +27,159 @@ class R404C_Admin {
     const MAX_PATTERN_LENGTH = 255;
 
     /**
+     * Admin page slug, shared by every tab.
+     */
+    const PAGE_SLUG = 'auto-redirect-404s';
+
+    /**
+     * Hook suffix of the plugin screen.
+     */
+    const PAGE_HOOK = 'toplevel_page_auto-redirect-404s';
+
+    /**
+     * Largest CSV accepted by the redirect import.
+     */
+    const IMPORT_MAX_BYTES = 2097152;
+
+    /**
+     * Most rows read from one CSV import.
+     */
+    const IMPORT_MAX_ROWS = 5000;
+
+    /**
+     * Error from the last failed redirect save, shown above the form.
+     *
+     * @var WP_Error|null
+     */
+    private $redirect_error = null;
+
+    /**
+     * Values from the last failed redirect save, put back into the form.
+     *
+     * @var array|null
+     */
+    private $redirect_form = null;
+
+    /**
      * Constructor
      */
     public function __construct() {
         add_action('admin_menu', array($this, 'add_admin_menu'));
+        add_action('admin_init', array($this, 'redirect_legacy_url'), 1);
+        add_action('admin_page_access_denied', array($this, 'redirect_legacy_url'));
         add_action('admin_init', array($this, 'init_settings'));
         add_action('admin_init', array($this, 'handle_log_actions'));
+        add_action('admin_init', array($this, 'handle_redirect_actions'));
         add_action('admin_post_r404c_export_logs', array($this, 'export_logs_csv'));
+        add_action('admin_post_r404c_export_redirects', array($this, 'export_redirects_csv'));
+        add_action('admin_post_r404c_import_redirects', array($this, 'import_redirects_csv'));
         add_action('admin_enqueue_scripts', array($this, 'enqueue_admin_assets'));
+        add_filter('submenu_file', array($this, 'highlight_submenu'), 10, 2);
         add_filter('plugin_action_links_' . plugin_basename(R404C_PLUGIN_FILE), array($this, 'add_settings_link'));
         add_filter('plugin_row_meta', array($this, 'addon_plugin_links'), 10, 2);
     }
 
     /**
-     * Add admin menu
+     * Add admin menu.
+     *
+     * One tabbed screen under a top-level "Auto Redirects" menu. The
+     * Redirection Manager and 404 Logs submenus are plain links to their tab.
      */
     public function add_admin_menu() {
-        add_options_page(
-            __('404 Redirect Settings', 'auto-redirect-404s'),
-            __('Auto 404 Redirects', 'auto-redirect-404s'),
+        add_menu_page(
+            __('Auto Redirects', 'auto-redirect-404s'),
+            __('Auto Redirects', 'auto-redirect-404s'),
             'manage_options',
-            'auto-redirect-404s',
+            self::PAGE_SLUG,
+            array($this, 'settings_page'),
+            'dashicons-randomize',
+            81
+        );
+
+        // Same slug as the parent, so it replaces the auto-generated first item.
+        add_submenu_page(
+            self::PAGE_SLUG,
+            __('Auto Redirects', 'auto-redirect-404s'),
+            __('Settings', 'auto-redirect-404s'),
+            'manage_options',
+            self::PAGE_SLUG,
             array($this, 'settings_page')
         );
+
+        add_submenu_page(
+            self::PAGE_SLUG,
+            __('Redirection Manager', 'auto-redirect-404s'),
+            __('Redirection Manager', 'auto-redirect-404s'),
+            'manage_options',
+            $this->tab_menu_slug('redirects')
+        );
+
+        add_submenu_page(
+            self::PAGE_SLUG,
+            __('404 Logs', 'auto-redirect-404s'),
+            __('404 Logs', 'auto-redirect-404s'),
+            'manage_options',
+            $this->tab_menu_slug('logs')
+        );
+
+        // Kept where 1.2.x lived so existing users still find it. It is only
+        // a link to the new screen.
+        add_options_page(
+            __('Auto Redirects', 'auto-redirect-404s'),
+            __('Auto 404 Redirects', 'auto-redirect-404s'),
+            'manage_options',
+            'admin.php?page=' . self::PAGE_SLUG
+        );
+    }
+
+    /**
+     * Menu slug that links straight to a tab.
+     *
+     * @param string $tab Tab key.
+     * @return string
+     */
+    private function tab_menu_slug($tab) {
+        return 'admin.php?page=' . self::PAGE_SLUG . '&tab=' . $tab;
+    }
+
+    /**
+     * Highlight the submenu item for the tab being viewed.
+     *
+     * @param string|null $submenu_file Current submenu file.
+     * @param string      $parent_file  Current parent menu.
+     * @return string|null
+     */
+    public function highlight_submenu($submenu_file, $parent_file) {
+        if (self::PAGE_SLUG !== $parent_file) {
+            return $submenu_file;
+        }
+
+        $tab = $this->get_current_tab();
+
+        return 'settings' === $tab ? $submenu_file : $this->tab_menu_slug($tab);
+    }
+
+    /**
+     * Send the 1.2.x Settings > Auto 404 Redirects URL to the new screen.
+     *
+     * Keeps bookmarks and links in old support threads working.
+     */
+    public function redirect_legacy_url() {
+        global $pagenow;
+
+        // phpcs:disable WordPress.Security.NonceVerification.Recommended -- routing only.
+        if ('options-general.php' !== $pagenow || !isset($_GET['page']) || self::PAGE_SLUG !== sanitize_key(wp_unslash($_GET['page']))) {
+            return;
+        }
+
+        $args = array();
+        if (isset($_GET['tab'])) {
+            $args['tab'] = sanitize_key(wp_unslash($_GET['tab']));
+        }
+        // phpcs:enable WordPress.Security.NonceVerification.Recommended
+
+        wp_safe_redirect($this->page_url($args));
+        exit;
     }
 
     /**
@@ -110,13 +240,13 @@ class R404C_Admin {
     /**
      * Get the current settings page tab.
      *
-     * @return string Either 'settings' or 'logs'.
+     * @return string One of 'settings', 'redirects' or 'logs'.
      */
     private function get_current_tab() {
         // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only view state.
         $tab = isset($_GET['tab']) ? sanitize_key(wp_unslash($_GET['tab'])) : 'settings';
 
-        return 'logs' === $tab ? 'logs' : 'settings';
+        return in_array($tab, array('redirects', 'logs'), true) ? $tab : 'settings';
     }
 
     /**
@@ -126,9 +256,38 @@ class R404C_Admin {
      * @return string
      */
     private function page_url($args = array()) {
-        $args = array_merge(array('page' => 'auto-redirect-404s'), $args);
+        $args = array_merge(array('page' => self::PAGE_SLUG), $args);
 
-        return add_query_arg($args, admin_url('options-general.php'));
+        return add_query_arg($args, admin_url('admin.php'));
+    }
+
+    /**
+     * Whether the current admin request is for the plugin screen.
+     *
+     * @return bool
+     */
+    private function is_plugin_page() {
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- page routing only.
+        return isset($_GET['page']) && self::PAGE_SLUG === sanitize_key(wp_unslash($_GET['page']));
+    }
+
+    /**
+     * The bulk action chosen in a WP_List_Table, from either select.
+     *
+     * @return string
+     */
+    private function get_bulk_action() {
+        // phpcs:disable WordPress.Security.NonceVerification.Recommended -- each caller verifies its own nonce.
+        if (isset($_REQUEST['action']) && '-1' !== $_REQUEST['action']) {
+            return sanitize_key(wp_unslash($_REQUEST['action']));
+        }
+
+        if (isset($_REQUEST['action2']) && '-1' !== $_REQUEST['action2']) {
+            return sanitize_key(wp_unslash($_REQUEST['action2']));
+        }
+        // phpcs:enable WordPress.Security.NonceVerification.Recommended
+
+        return '';
     }
 
     /**
@@ -137,12 +296,7 @@ class R404C_Admin {
      * Runs on admin_init so a redirect is still possible before output starts.
      */
     public function handle_log_actions() {
-        // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- page routing only; each branch verifies its own nonce.
-        if (!isset($_GET['page']) || 'auto-redirect-404s' !== sanitize_key(wp_unslash($_GET['page']))) {
-            return;
-        }
-
-        if (!current_user_can('manage_options')) {
+        if (!$this->is_plugin_page() || !current_user_can('manage_options')) {
             return;
         }
 
@@ -150,15 +304,7 @@ class R404C_Admin {
         $action = isset($_REQUEST['r404c_action']) ? sanitize_key(wp_unslash($_REQUEST['r404c_action'])) : '';
 
         // Bulk actions come from WP_List_Table's own action/action2 selects.
-        // phpcs:disable WordPress.Security.NonceVerification.Recommended
-        $bulk = '';
-        if (isset($_REQUEST['action']) && '-1' !== $_REQUEST['action']) {
-            $bulk = sanitize_key(wp_unslash($_REQUEST['action']));
-        }
-        if ('' === $bulk && isset($_REQUEST['action2']) && '-1' !== $_REQUEST['action2']) {
-            $bulk = sanitize_key(wp_unslash($_REQUEST['action2']));
-        }
-        // phpcs:enable WordPress.Security.NonceVerification.Recommended
+        $bulk = $this->get_bulk_action();
 
         $notice = '';
 
@@ -251,6 +397,334 @@ class R404C_Admin {
     }
 
     /**
+     * Handle Redirection Manager requests: save, toggle, delete and bulk actions.
+     *
+     * Runs on admin_init so a successful action can redirect before output
+     * starts. A failed save keeps its values on this object, and the form is
+     * re-rendered with them and the error.
+     */
+    public function handle_redirect_actions() {
+        if (!$this->is_plugin_page() || !current_user_can('manage_options')) {
+            return;
+        }
+
+        // phpcs:disable WordPress.Security.NonceVerification.Recommended -- verified per branch below.
+        $action = isset($_REQUEST['r404c_redirect_action']) ? sanitize_key(wp_unslash($_REQUEST['r404c_redirect_action'])) : '';
+        $id     = isset($_REQUEST['redirect_id']) ? absint(wp_unslash($_REQUEST['redirect_id'])) : 0;
+        // phpcs:enable WordPress.Security.NonceVerification.Recommended
+
+        $bulk   = $this->get_bulk_action();
+        $notice = array();
+
+        if ('save' === $action) {
+            $notice = $this->save_redirect($id);
+
+            if (empty($notice)) {
+                // Validation failed: fall through to the page, which shows the error.
+                return;
+            }
+        } elseif ('delete' === $action) {
+            check_admin_referer('r404c_delete_redirect_' . $id);
+
+            if ($id && R404C_Redirects::delete(array($id))) {
+                $notice = array('r404c_notice' => 'redirect_deleted');
+            }
+        } elseif ('toggle' === $action) {
+            check_admin_referer('r404c_toggle_redirect_' . $id);
+
+            $rule = R404C_Redirects::get($id);
+
+            if ($rule) {
+                $enable = !$rule->is_enabled;
+                R404C_Redirects::set_enabled(array($id), $enable);
+                $notice = array('r404c_notice' => $enable ? 'redirect_enabled' : 'redirect_disabled');
+            }
+        } elseif (0 === strpos($bulk, 'r404c_redirects_')) {
+            check_admin_referer('bulk-r404c_redirects');
+
+            // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- nonce checked on the line above.
+            $ids = isset($_REQUEST['redirect_ids']) ? array_map('absint', (array) wp_unslash($_REQUEST['redirect_ids'])) : array();
+
+            if (!empty($ids)) {
+                switch ($bulk) {
+                    case 'r404c_redirects_enable':
+                        $count = R404C_Redirects::set_enabled($ids, true);
+                        break;
+                    case 'r404c_redirects_disable':
+                        $count = R404C_Redirects::set_enabled($ids, false);
+                        break;
+                    case 'r404c_redirects_reset':
+                        $count = R404C_Redirects::reset_hits($ids);
+                        break;
+                    case 'r404c_redirects_delete':
+                        $count = R404C_Redirects::delete($ids);
+                        break;
+                    default:
+                        $count = 0;
+                }
+
+                $notice = array(
+                    'r404c_notice' => str_replace('r404c_redirects_', 'bulk_', $bulk),
+                    'r404c_count'  => $count,
+                );
+            }
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- only strips noise from a GET search URL.
+        } elseif ('redirects' === $this->get_current_tab() && !empty($_GET['_wp_http_referer']) && isset($_SERVER['REQUEST_URI'])) {
+            // The list form submits by GET; drop the nonce and referer it
+            // carries so search and filter URLs stay short and shareable,
+            // the same as core's list screens.
+            wp_safe_redirect(remove_query_arg(array('_wp_http_referer', '_wpnonce', 'action', 'action2'), esc_url_raw(wp_unslash($_SERVER['REQUEST_URI']))));
+            exit;
+        } else {
+            return;
+        }
+
+        wp_safe_redirect($this->page_url(array_merge(array('tab' => 'redirects'), $notice)));
+        exit;
+    }
+
+    /**
+     * Save the add / edit redirect form.
+     *
+     * @param int $id Rule being edited, or 0 for a new rule.
+     * @return array Notice query args on success, empty array on failure.
+     */
+    private function save_redirect($id) {
+        check_admin_referer('r404c_save_redirect', 'r404c_redirect_nonce');
+
+        // Source and target are passed through raw: R404C_Redirects sanitises
+        // each one for its purpose, and sanitize_text_field() would strip %xx
+        // octets from paths and angle brackets from regex sources.
+        // phpcs:disable WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+        $data = array(
+            'source_url'  => isset($_POST['source_url']) ? R404C_Redirects::clean_input(wp_unslash($_POST['source_url'])) : '',
+            'target_url'  => isset($_POST['target_url']) ? R404C_Redirects::clean_input(wp_unslash($_POST['target_url'])) : '',
+            'match_type'  => isset($_POST['match_type']) ? sanitize_key(wp_unslash($_POST['match_type'])) : 'exact',
+            'query_mode'  => isset($_POST['query_mode']) ? sanitize_key(wp_unslash($_POST['query_mode'])) : 'ignore',
+            'status_code' => isset($_POST['status_code']) ? absint(wp_unslash($_POST['status_code'])) : 301,
+            'is_enabled'  => !empty($_POST['is_enabled']),
+        );
+        // phpcs:enable WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+
+        $from_log   = isset($_POST['from_log']) ? absint(wp_unslash($_POST['from_log'])) : 0;
+        $remove_log = !empty($_POST['remove_log']);
+
+        $result = R404C_Redirects::save($data, $id);
+
+        if (is_wp_error($result)) {
+            $this->redirect_error = $result;
+            $this->redirect_form  = array_merge(
+                $data,
+                array(
+                    'id'         => $id,
+                    'from_log'   => $from_log,
+                    'remove_log' => $remove_log,
+                )
+            );
+
+            return array();
+        }
+
+        // The URL now has a rule, so its 404 log entry is resolved.
+        if ($from_log && $remove_log) {
+            R404C_Logger::delete(array($from_log));
+        }
+
+        return array('r404c_notice' => $id ? 'redirect_updated' : 'redirect_added');
+    }
+
+    /**
+     * Stream every redirect rule out as a CSV download.
+     *
+     * The column order matches what import_redirects_csv() reads, so an
+     * export can be imported straight back.
+     */
+    public function export_redirects_csv() {
+        if (!current_user_can('manage_options')) {
+            wp_die(esc_html__('You do not have sufficient permissions to export redirects.', 'auto-redirect-404s'));
+        }
+
+        check_admin_referer('r404c_export_redirects');
+
+        $filename = 'auto-redirect-404s-redirects-' . gmdate('Y-m-d') . '.csv';
+
+        nocache_headers();
+        header('Content-Type: text/csv; charset=' . get_option('blog_charset'));
+        header('Content-Disposition: attachment; filename="' . $filename . '"');
+
+        // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fopen -- see export_logs_csv().
+        $output = fopen('php://output', 'w');
+
+        $this->write_csv_row($output, array('source', 'target', 'code', 'match', 'query', 'enabled', 'hits', 'last_hit'));
+
+        foreach (R404C_Redirects::get_all() as $rule) {
+            $this->write_csv_row(
+                $output,
+                array(
+                    $this->csv_escape($rule->source_url),
+                    $this->csv_escape($rule->target_url),
+                    (int) $rule->status_code,
+                    $rule->match_type,
+                    $rule->query_mode,
+                    $rule->is_enabled ? 'yes' : 'no',
+                    (int) $rule->hit_count,
+                    (string) $rule->last_hit,
+                )
+            );
+        }
+
+        // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose
+        fclose($output);
+        exit;
+    }
+
+    /**
+     * Import redirect rules from an uploaded CSV.
+     *
+     * Columns: source, target, code, match, query, enabled. Only source is
+     * required (and target, unless code is 410); the rest default to 301,
+     * exact, ignore and enabled. A header row is detected and skipped.
+     * Existing sources are skipped rather than overwritten.
+     */
+    public function import_redirects_csv() {
+        if (!current_user_can('manage_options')) {
+            wp_die(esc_html__('You do not have sufficient permissions to import redirects.', 'auto-redirect-404s'));
+        }
+
+        check_admin_referer('r404c_import_redirects', 'r404c_import_nonce');
+
+        $fail = function ($reason) {
+            wp_safe_redirect(
+                $this->page_url(
+                    array(
+                        'tab'          => 'redirects',
+                        'r404c_notice' => 'import_failed',
+                        'r404c_reason' => $reason,
+                    )
+                )
+            );
+            exit;
+        };
+
+        // Each field is checked below; the tmp_name is only ever used after
+        // is_uploaded_file() confirms PHP created it for this request.
+        // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized, WordPress.Security.ValidatedSanitizedInput.MissingUnslash
+        $file = isset($_FILES['r404c_import_file']) && is_array($_FILES['r404c_import_file']) ? $_FILES['r404c_import_file'] : null;
+
+        if (!$file || !isset($file['error'], $file['tmp_name'], $file['name'], $file['size'])
+            || UPLOAD_ERR_OK !== (int) $file['error'] || !is_uploaded_file($file['tmp_name'])) {
+            $fail('nofile');
+        }
+
+        if ((int) $file['size'] > self::IMPORT_MAX_BYTES) {
+            $fail('toobig');
+        }
+
+        $extension = strtolower(pathinfo(sanitize_file_name($file['name']), PATHINFO_EXTENSION));
+        if (!in_array($extension, array('csv', 'txt'), true)) {
+            $fail('badtype');
+        }
+
+        if (!R404C_Redirects::table_exists(true) && !R404C_Redirects::install_table()) {
+            $fail('nodb');
+        }
+
+        // Reading PHP's own upload temp file; WP_Filesystem does not apply.
+        // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fopen
+        $handle = fopen($file['tmp_name'], 'r');
+        if (!$handle) {
+            $fail('unreadable');
+        }
+
+        $added   = 0;
+        $skipped = 0;
+        $invalid = 0;
+        $line    = 0;
+
+        while (false !== ($row = fgetcsv($handle, 0, ',', '"', ''))) {
+            $line++;
+
+            if ($line > self::IMPORT_MAX_ROWS) {
+                break;
+            }
+
+            // fgetcsv() returns array(null) for a blank line.
+            if (!is_array($row) || array(null) === $row) {
+                continue;
+            }
+
+            $row = array_map('trim', array_map('strval', $row));
+
+            if (1 === $line) {
+                $row[0] = preg_replace('/^\xEF\xBB\xBF/', '', $row[0]);
+
+                if ('source' === strtolower($row[0])) {
+                    continue;
+                }
+            }
+
+            if ('' === $row[0]) {
+                continue;
+            }
+
+            $enabled = isset($row[5]) ? strtolower($row[5]) : '';
+
+            $result = R404C_Redirects::save(
+                array(
+                    'source_url'  => $this->csv_unescape($row[0]),
+                    'target_url'  => isset($row[1]) ? $this->csv_unescape($row[1]) : '',
+                    'status_code' => isset($row[2]) && '' !== $row[2] ? absint($row[2]) : 301,
+                    'match_type'  => isset($row[3]) && '' !== $row[3] ? sanitize_key($row[3]) : 'exact',
+                    'query_mode'  => isset($row[4]) && '' !== $row[4] ? sanitize_key($row[4]) : 'ignore',
+                    'is_enabled'  => '' === $enabled || in_array($enabled, array('1', 'yes', 'true', 'on', 'enabled'), true),
+                ),
+                0,
+                false
+            );
+
+            if (!is_wp_error($result)) {
+                $added++;
+            } elseif ('duplicate' === $result->get_error_code()) {
+                $skipped++;
+            } else {
+                $invalid++;
+            }
+        }
+
+        // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose
+        fclose($handle);
+
+        R404C_Redirects::rebuild_cache();
+
+        wp_safe_redirect(
+            $this->page_url(
+                array(
+                    'tab'           => 'redirects',
+                    'r404c_notice'  => 'imported',
+                    'r404c_added'   => $added,
+                    'r404c_skipped' => $skipped,
+                    'r404c_invalid' => $invalid,
+                )
+            )
+        );
+        exit;
+    }
+
+    /**
+     * Undo csv_escape() on an imported cell.
+     *
+     * @param string $value Cell value.
+     * @return string
+     */
+    private function csv_unescape($value) {
+        if (strlen($value) > 1 && "'" === $value[0] && in_array($value[1], array('=', '+', '-', '@'), true)) {
+            return substr($value, 1);
+        }
+
+        return $value;
+    }
+
+    /**
      * Write one CSV row.
      *
      * PHP 8.4 deprecated relying on fputcsv()'s default $escape value, so it is
@@ -289,7 +763,7 @@ class R404C_Admin {
      * Enqueue admin assets
      */
     public function enqueue_admin_assets($hook) {
-        if ('settings_page_auto-redirect-404s' !== $hook) {
+        if (self::PAGE_HOOK !== $hook) {
             return;
         }
 
@@ -317,7 +791,11 @@ class R404C_Admin {
         wp_localize_script('r404c-admin-script', 'r404c_ajax', array(
             'ajax_url' => admin_url('admin-ajax.php'),
             'nonce' => wp_create_nonce('r404c_nonce'),
-            'home_url' => home_url()
+            'home_url' => home_url(),
+            'i18n' => array(
+                'source_required' => __('Enter the source URL to redirect from.', 'auto-redirect-404s'),
+                'target_required' => __('Enter the target URL to redirect to.', 'auto-redirect-404s'),
+            ),
         ));
     }
 
@@ -325,13 +803,20 @@ class R404C_Admin {
      * Add settings link to plugins page
      */
     public function add_settings_link($links) {
-        $settings_link = sprintf(
-            '<a href="%s">%s</a>',
-            esc_url($this->page_url()),
-            esc_html__('Settings', 'auto-redirect-404s')
+        $plugin_links = array(
+            sprintf(
+                '<a href="%s">%s</a>',
+                esc_url($this->page_url()),
+                esc_html__('Settings', 'auto-redirect-404s')
+            ),
+            sprintf(
+                '<a href="%s">%s</a>',
+                esc_url($this->page_url(array('tab' => 'redirects'))),
+                esc_html__('Redirects', 'auto-redirect-404s')
+            ),
         );
-        array_unshift($links, $settings_link);
-        return $links;
+
+        return array_merge($plugin_links, $links);
     }
 
     /**
@@ -374,7 +859,7 @@ class R404C_Admin {
 
         $active_tab = $this->get_current_tab();
 
-        // Shared header data used by both tabs.
+        // Shared header data used by every tab.
         $enabled         = get_option('r404c_enabled', 'on');
         $redirect_url    = get_option('r404c_redirect_url', home_url());
         $redirect_type   = get_option('r404c_redirect_type', '301');
@@ -392,13 +877,46 @@ class R404C_Admin {
             R404C_Logger::install_table();
         }
 
-        $log_count = R404C_Logger::count_logs();
+        $log_count            = R404C_Logger::count_logs();
+        $active_redirect_count = R404C_Redirects::active_count();
 
-        $settings_url = $this->page_url();
-        $logs_url     = $this->page_url(array('tab' => 'logs'));
+        $settings_url  = $this->page_url();
+        $redirects_url = $this->page_url(array('tab' => 'redirects'));
+        $logs_url      = $this->page_url(array('tab' => 'logs'));
+
+        // Get pages for the quick-select dropdowns
+        $pages = get_pages(array(
+            'post_status' => 'publish',
+            'number' => 100
+        ));
+
+        if ('redirects' === $active_tab) {
+            $this->render_notice();
+
+            // Self-heal, as for the log table above.
+            if (!R404C_Redirects::table_exists(true)) {
+                R404C_Redirects::install_table();
+            }
+
+            $redirects_table = new R404C_Redirects_Table();
+            $redirects_table->prepare_items();
+
+            $redirect_counts = R404C_Redirects::counts();
+            $redirect_hits   = R404C_Redirects::total_hits();
+            $form            = $this->get_redirect_form_values();
+            $form_error      = $this->redirect_error;
+
+            $export_url = wp_nonce_url(
+                add_query_arg('action', 'r404c_export_redirects', admin_url('admin-post.php')),
+                'r404c_export_redirects'
+            );
+
+            include R404C_PLUGIN_DIR . 'templates/admin-redirects.php';
+            return;
+        }
 
         if ('logs' === $active_tab) {
-            $this->render_log_notice();
+            $this->render_notice();
 
             $logs_table = new R404C_Logs_Table();
             $logs_table->prepare_items();
@@ -424,32 +942,150 @@ class R404C_Admin {
             return;
         }
 
-        // Get pages for dropdown
-        $pages = get_pages(array(
-            'post_status' => 'publish',
-            'number' => 100
-        ));
-
         include R404C_PLUGIN_DIR . 'templates/admin-settings.php';
     }
 
     /**
-     * Print the admin notice produced by a log action redirect.
+     * Values for the add / edit redirect form.
+     *
+     * In order of precedence: the values from a save that just failed, the
+     * rule being edited, or a source pre-filled from the 404 log.
+     *
+     * @return array
      */
-    private function render_log_notice() {
-        // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- display-only, action already performed and nonce-checked.
-        $notice = isset($_GET['r404c_notice']) ? sanitize_key(wp_unslash($_GET['r404c_notice'])) : '';
+    private function get_redirect_form_values() {
+        $defaults = array(
+            'id'          => 0,
+            'source_url'  => '',
+            'target_url'  => '',
+            'match_type'  => 'exact',
+            'query_mode'  => 'ignore',
+            'status_code' => 301,
+            'is_enabled'  => true,
+            'from_log'    => 0,
+            'remove_log'  => true,
+        );
 
-        if ('deleted' === $notice) {
-            $message = __('Selected log entries deleted.', 'auto-redirect-404s');
-        } elseif ('cleared' === $notice) {
-            $message = __('All 404 logs have been cleared.', 'auto-redirect-404s');
-        } else {
-            return;
+        if (null !== $this->redirect_form) {
+            return array_merge($defaults, $this->redirect_form);
         }
 
+        // phpcs:disable WordPress.Security.NonceVerification.Recommended -- read-only form pre-fill.
+        $edit_id = isset($_GET['edit']) ? absint(wp_unslash($_GET['edit'])) : 0;
+
+        if ($edit_id) {
+            $rule = R404C_Redirects::get($edit_id);
+
+            if ($rule) {
+                return array_merge(
+                    $defaults,
+                    array(
+                        'id'          => (int) $rule->id,
+                        'source_url'  => $rule->source_url,
+                        'target_url'  => $rule->target_url,
+                        'match_type'  => $rule->match_type,
+                        'query_mode'  => $rule->query_mode,
+                        'status_code' => (int) $rule->status_code,
+                        'is_enabled'  => (bool) $rule->is_enabled,
+                    )
+                );
+            }
+        }
+
+        if (isset($_GET['source'])) {
+            $source = R404C_Redirects::clean_input(wp_unslash($_GET['source']));
+
+            $defaults['source_url'] = $source;
+            $defaults['from_log']   = isset($_GET['from_log']) ? absint(wp_unslash($_GET['from_log'])) : 0;
+
+            // A logged URL with a query string most likely needs exactly that
+            // query matched, or the rule would catch the bare path too.
+            if (false !== strpos($source, '?')) {
+                $defaults['query_mode'] = 'exact';
+            }
+        }
+        // phpcs:enable WordPress.Security.NonceVerification.Recommended
+
+        return $defaults;
+    }
+
+    /**
+     * Print the admin notice produced by a log or redirect action.
+     */
+    private function render_notice() {
+        // phpcs:disable WordPress.Security.NonceVerification.Recommended -- display-only, action already performed and nonce-checked.
+        $notice = isset($_GET['r404c_notice']) ? sanitize_key(wp_unslash($_GET['r404c_notice'])) : '';
+        $count  = isset($_GET['r404c_count']) ? absint(wp_unslash($_GET['r404c_count'])) : 0;
+        $type   = 'success';
+
+        switch ($notice) {
+            case 'deleted':
+                $message = __('Selected log entries deleted.', 'auto-redirect-404s');
+                break;
+            case 'cleared':
+                $message = __('All 404 logs have been cleared.', 'auto-redirect-404s');
+                break;
+            case 'redirect_added':
+                $message = __('Redirect added.', 'auto-redirect-404s');
+                break;
+            case 'redirect_updated':
+                $message = __('Redirect updated.', 'auto-redirect-404s');
+                break;
+            case 'redirect_deleted':
+                $message = __('Redirect deleted.', 'auto-redirect-404s');
+                break;
+            case 'redirect_enabled':
+                $message = __('Redirect enabled.', 'auto-redirect-404s');
+                break;
+            case 'redirect_disabled':
+                $message = __('Redirect disabled.', 'auto-redirect-404s');
+                break;
+            case 'bulk_enable':
+                /* translators: %s: number of redirects */
+                $message = sprintf(_n('%s redirect enabled.', '%s redirects enabled.', $count, 'auto-redirect-404s'), number_format_i18n($count));
+                break;
+            case 'bulk_disable':
+                /* translators: %s: number of redirects */
+                $message = sprintf(_n('%s redirect disabled.', '%s redirects disabled.', $count, 'auto-redirect-404s'), number_format_i18n($count));
+                break;
+            case 'bulk_reset':
+                /* translators: %s: number of redirects */
+                $message = sprintf(_n('Hit counter reset for %s redirect.', 'Hit counters reset for %s redirects.', $count, 'auto-redirect-404s'), number_format_i18n($count));
+                break;
+            case 'bulk_delete':
+                /* translators: %s: number of redirects */
+                $message = sprintf(_n('%s redirect deleted.', '%s redirects deleted.', $count, 'auto-redirect-404s'), number_format_i18n($count));
+                break;
+            case 'imported':
+                $message = sprintf(
+                    /* translators: 1: rules added, 2: duplicates skipped, 3: invalid rows */
+                    __('Import finished: %1$s added, %2$s skipped as duplicates, %3$s invalid.', 'auto-redirect-404s'),
+                    number_format_i18n(isset($_GET['r404c_added']) ? absint(wp_unslash($_GET['r404c_added'])) : 0),
+                    number_format_i18n(isset($_GET['r404c_skipped']) ? absint(wp_unslash($_GET['r404c_skipped'])) : 0),
+                    number_format_i18n(isset($_GET['r404c_invalid']) ? absint(wp_unslash($_GET['r404c_invalid'])) : 0)
+                );
+                break;
+            case 'import_failed':
+                $type    = 'error';
+                $reasons = array(
+                    'nofile'     => __('Choose a CSV file to import.', 'auto-redirect-404s'),
+                    /* translators: %s: maximum file size, e.g. "2 MB" */
+                    'toobig'     => sprintf(__('The file is larger than %s.', 'auto-redirect-404s'), size_format(self::IMPORT_MAX_BYTES)),
+                    'badtype'    => __('Only .csv files can be imported.', 'auto-redirect-404s'),
+                    'unreadable' => __('The uploaded file could not be read.', 'auto-redirect-404s'),
+                    'nodb'       => __('The redirects table could not be created.', 'auto-redirect-404s'),
+                );
+                $reason  = isset($_GET['r404c_reason']) ? sanitize_key(wp_unslash($_GET['r404c_reason'])) : '';
+                $message = __('Import failed.', 'auto-redirect-404s') . ' ' . (isset($reasons[$reason]) ? $reasons[$reason] : '');
+                break;
+            default:
+                return;
+        }
+        // phpcs:enable WordPress.Security.NonceVerification.Recommended
+
         printf(
-            '<div class="notice notice-success is-dismissible"><p>%s</p></div>',
+            '<div class="notice notice-%s is-dismissible"><p>%s</p></div>',
+            esc_attr($type),
             esc_html($message)
         );
     }
@@ -590,40 +1226,14 @@ class R404C_Admin {
     /**
      * Normalise a user-supplied redirect URL, or return '' if it is unusable.
      *
-     * A bare host like "example.com" is upgraded to http://example.com, but an
-     * explicit non-http scheme is rejected outright. Blindly prefixing http://
-     * onto "javascript:alert(1)" would otherwise store the mangled string
-     * "http://javascript:alert(1)" rather than reporting invalid input.
+     * The rules live in R404C_Redirects::normalize_absolute_url(), shared with
+     * Redirection Manager targets.
      *
      * @param string $raw Raw user input.
      * @return string A http/https URL, or '' when the input cannot be used.
      */
     private function normalize_redirect_url($raw) {
-        $url = trim(sanitize_text_field($raw));
-
-        if ('' === $url) {
-            return '';
-        }
-
-        if (preg_match('#^([a-z][a-z0-9+.\-]*)\s*:#i', $url, $matches)) {
-            // "example.com:8080" and "localhost:8080" look like a scheme to the
-            // pattern above but are really host:port, so allow those through.
-            $is_host_port = (bool) preg_match('#^[a-z0-9.\-]+:\d+#i', $url);
-
-            if (!$is_host_port && !in_array(strtolower($matches[1]), array('http', 'https'), true)) {
-                return '';
-            }
-        }
-
-        if (!preg_match('#^https?://#i', $url)) {
-            $url = 'http://' . ltrim($url, '/');
-        }
-
-        if (!filter_var($url, FILTER_VALIDATE_URL)) {
-            return '';
-        }
-
-        return esc_url_raw($url, array('http', 'https'));
+        return R404C_Redirects::normalize_absolute_url(sanitize_text_field($raw));
     }
 
     /**

@@ -38,17 +38,154 @@ class R404C_Frontend {
     const SKIP_PREFIXES = '/wp-json/,/wp-admin/,/wp-includes/,/wp-content/,/.well-known/,/feed/,/comments/feed/';
 
     /**
+     * Set when a 410 rule matched, so the 404 handler leaves the request alone.
+     *
+     * @var bool
+     */
+    private static $serving_gone = false;
+
+    /**
      * Constructor
      */
     public function __construct() {
+        // Redirection Manager rules run first, on every request, so a rule for
+        // a missing URL always beats the catch-all 404 redirect below.
+        add_action('template_redirect', array($this, 'handle_manual_redirect'), 0);
         add_action('template_redirect', array($this, 'handle_404_redirect'), 1);
+    }
+
+    /**
+     * Apply a matching Redirection Manager rule.
+     *
+     * Costs no query at all when there are no enabled rules.
+     */
+    public function handle_manual_redirect() {
+        if (!isset($_SERVER['REQUEST_URI'])) {
+            return;
+        }
+
+        // Matched raw: sanitize_text_field() would strip %xx octets that are a
+        // legitimate part of the path. The value is only compared, and the
+        // query string passed on to a target goes through wp_redirect()'s own
+        // sanitiser.
+        // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+        $uri = (string) wp_unslash($_SERVER['REQUEST_URI']);
+
+        $parts = explode('?', $uri, 2);
+        $path  = $parts[0];
+        $query = isset($parts[1]) ? $parts[1] : '';
+
+        $hash_pos = strpos($query, '#');
+        if (false !== $hash_pos) {
+            $query = substr($query, 0, $hash_pos);
+        }
+
+        $match = R404C_Redirects::match_request($path, $query);
+
+        if (!$match) {
+            return;
+        }
+
+        /**
+         * Filter whether a matched Redirection Manager rule is applied.
+         *
+         * @since 1.3.0
+         *
+         * @param bool   $apply       Whether to apply the rule.
+         * @param array  $match       {id, target, code}. Target is empty for 410.
+         * @param string $current_url The requested URL.
+         */
+        if (!apply_filters('r404c_should_apply_rule', true, $match, $this->get_current_url())) {
+            return;
+        }
+
+        if (410 === $match['code']) {
+            R404C_Redirects::record_hit($match['id']);
+            $this->serve_gone();
+            return;
+        }
+
+        // A pattern rule can still resolve to the URL being requested.
+        if ($this->is_same_request($path, $query, $match['target'])) {
+            return;
+        }
+
+        R404C_Redirects::record_hit($match['id']);
+
+        // Not wp_safe_redirect(), for the same reason as the 404 redirect
+        // below: targets may be external. They can only be set by a
+        // manage_options user and are validated against an http/https
+        // allowlist when saved.
+        // phpcs:ignore WordPress.Security.SafeRedirect.wp_redirect_wp_redirect
+        wp_redirect($match['target'], $match['code'], 'Auto Redirect 404s');
+        exit;
+    }
+
+    /**
+     * Answer the request with 410 Gone, using the theme's 404 template.
+     *
+     * @return void
+     */
+    private function serve_gone() {
+        global $wp_query;
+
+        self::$serving_gone = true;
+
+        // Core's canonical and old-slug redirects both act on 404s and would
+        // send a deliberately removed URL somewhere else.
+        remove_action('template_redirect', 'redirect_canonical');
+        remove_action('template_redirect', 'wp_old_slug_redirect');
+
+        if ($wp_query instanceof WP_Query) {
+            $wp_query->set_404();
+        }
+
+        status_header(410);
+        nocache_headers();
+    }
+
+    /**
+     * Whether a redirect target is the URL currently being requested.
+     *
+     * Unlike is_same_destination(), the query string counts: a rule may
+     * legitimately send /page?old=1 to /page.
+     *
+     * @param string $path   Raw request path.
+     * @param string $query  Raw request query string.
+     * @param string $target Absolute target URL.
+     * @return bool
+     */
+    private function is_same_request($path, $query, $target) {
+        $parts = wp_parse_url($target);
+
+        if (empty($parts)) {
+            return false;
+        }
+
+        $host = isset($_SERVER['HTTP_HOST']) ? strtolower(sanitize_text_field(wp_unslash($_SERVER['HTTP_HOST']))) : '';
+
+        // HTTP_HOST may carry a port; the parsed target keeps them apart.
+        $target_host = isset($parts['host']) ? strtolower($parts['host']) : $host;
+        if (!empty($parts['port'])) {
+            $target_host .= ':' . $parts['port'];
+        }
+
+        if ($target_host !== $host && strtok($host, ':') !== $target_host) {
+            return false;
+        }
+
+        $target_path  = isset($parts['path']) ? $parts['path'] : '/';
+        $target_query = isset($parts['query']) ? $parts['query'] : '';
+
+        return R404C_Redirects::path_key($path) === R404C_Redirects::path_key($target_path)
+            && R404C_Redirects::normalize_query($query) === R404C_Redirects::normalize_query($target_query);
     }
 
     /**
      * Handle 404 logging and redirects.
      */
     public function handle_404_redirect() {
-        if (!is_404()) {
+        if (!is_404() || self::$serving_gone) {
             return;
         }
 

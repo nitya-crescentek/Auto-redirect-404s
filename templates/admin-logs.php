@@ -13,6 +13,8 @@
  * @var string           $logs_url        URL of the logs tab.
  * @var string           $clear_url       Nonced URL that clears every log row.
  * @var string           $export_url      Nonced URL that downloads the CSV.
+ *
+ * Plus the header variables documented in partials/admin-header.php.
  */
 
 // Prevent direct access
@@ -21,20 +23,8 @@ if (!defined('ABSPATH')) {
 }
 ?>
 
-<div class="wrap">
-    <h1><?php esc_html_e('404 Redirect Settings', 'auto-redirect-404s'); ?></h1>
-
-    <h2 class="nav-tab-wrapper r404c-tabs">
-        <a href="<?php echo esc_url($settings_url); ?>" class="nav-tab">
-            <?php esc_html_e('Settings', 'auto-redirect-404s'); ?>
-        </a>
-        <a href="<?php echo esc_url($logs_url); ?>" class="nav-tab nav-tab-active">
-            <?php esc_html_e('404 Logs', 'auto-redirect-404s'); ?>
-            <?php if ($log_count > 0) : ?>
-                <span class="r404c-count"><?php echo esc_html(number_format_i18n($log_count)); ?></span>
-            <?php endif; ?>
-        </a>
-    </h2>
+<div class="wrap r404c-wrap">
+    <?php include R404C_PLUGIN_DIR . 'templates/partials/admin-header.php'; ?>
 
     <?php if ('on' !== $logging_enabled) : ?>
         <div class="notice notice-warning">
@@ -78,14 +68,14 @@ if (!defined('ABSPATH')) {
             <?php
             printf(
                 /* translators: %s: maximum number of retained log rows */
-                esc_html__('Each unique URL is stored once with a hit counter. The %s least recently seen entries are kept; older entries are removed automatically. No IP addresses or personal data are recorded.', 'auto-redirect-404s'),
+                esc_html__('Each unique URL is stored once with a hit counter. The %s least recently seen entries are kept; older entries are removed automatically. No IP addresses or personal data are recorded. Hover a URL and choose Create Redirect to send it somewhere useful.', 'auto-redirect-404s'),
                 esc_html(number_format_i18n(R404C_Logger::MAX_ROWS))
             );
             ?>
         </p>
 
         <form method="post" action="<?php echo esc_url($logs_url); ?>">
-            <input type="hidden" name="page" value="auto-redirect-404s" />
+            <input type="hidden" name="page" value="<?php echo esc_attr(R404C_Admin::PAGE_SLUG); ?>" />
             <input type="hidden" name="tab" value="logs" />
             <?php
             $logs_table->search_box(__('Search URLs', 'auto-redirect-404s'), 'r404c-log-search');

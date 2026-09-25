@@ -1,68 +1,102 @@
-=== Auto Redirect 404 to Custom URL - 404 Redirect & Error Log ===
+=== Auto Redirect 404s – 301 Redirect Manager & 404 Monitor ===
 Contributors: nityasaha
 Donate link: https://buymeacoffee.com/nityasaha
-Tags: 404 redirect, redirect, 301 redirect, 404 error, seo
+Tags: 404 redirect, 301 redirect, redirect manager, redirection, 404 error
 Requires at least: 5.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.2.0
+Stable tag: 1.3.0
 License: GPL v2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Redirect 404 errors to any URL with SEO-friendly 301 redirects, and log every broken link so you can find and fix 404 errors fast.
+Redirect every 404 to any URL, manage 301 redirects with exact, wildcard and regex rules, and monitor broken links with a built-in 404 log.
 
 == Description ==
 
-**Auto Redirect 404 to Custom URL** is a fast, lightweight 404 redirect plugin that automatically sends every 404 "Page Not Found" error to a custom URL or your homepage — and now logs every broken link so you can see exactly which pages are missing.
+**Auto Redirect 404s** is a fast, lightweight redirect plugin that does three jobs most sites need, from one screen:
 
-Instead of losing a visitor to an error page, the plugin redirects them to a page that works. Instead of guessing which URLs are broken, the built-in 404 error log shows you every missing URL, how many times it was hit, and where the visitor came from.
+1. **404 Auto Redirect** – sends every 404 "Page Not Found" error to your homepage or any URL you choose, with an SEO-friendly 301.
+2. **Redirection Manager** – create your own 301, 302, 307 and 308 redirects, or mark URLs as 410 Gone, using exact, wildcard or regular expression rules.
+3. **404 Monitor** – logs every broken URL with a hit counter and referrer, so you can see what is missing and turn it into a redirect in one click.
 
-If you are trying to clear "Not found (404)" errors out of Google Search Console, fix broken links after a site migration, or simply stop losing traffic to dead URLs, this plugin does it in about thirty seconds of setup.
+Instead of losing a visitor to an error page, they land somewhere useful. Instead of guessing which URLs are broken, the 404 log tells you. And when you move or rename a page, a Redirection Manager rule sends its traffic and link equity to the new address.
+
+If you are clearing "Not found (404)" errors out of Google Search Console, fixing broken links after a site migration, or simply managing redirects without a heavyweight plugin, this does it in minutes.
 
 = Key Features =
 
-* **Redirect 404 to Homepage or Any URL** – send all 404 errors to your homepage, a landing page, a category, or an external site
-* **404 Error Log** – every broken URL recorded with a hit counter, referrer, and first/last seen timestamps
-* **SEO-Friendly 301 Redirects** – permanent redirects that pass link equity, with a 302 temporary option when you need it
-* **Fix Google Search Console 404 Errors** – resolve "Not found (404)" and soft 404 reports with proper redirects
-* **One-Click Enable / Disable** – toggle redirects and logging independently, without deactivating the plugin
+**Redirection Manager**
+
+* **301, 302, 307, 308 and 410 Gone** – every redirect type search engines understand
+* **Exact, Wildcard and Regex matching** – redirect one URL, a whole folder (`/old-blog/*`), or any pattern you can write as a regular expression
+* **Reuse matched text** – insert wildcard and regex captures into the target with `$1`, `$2` …
+* **Query string control** – per rule, ignore the query string, pass it through to the target, or match it exactly
+* **Hit counter and last-hit date** – see which redirects are still being used
+* **Enable, disable, search, sort and bulk edit** your rules
+* **CSV import and export** – move redirects between sites, or bulk-load them from a spreadsheet
+* **Works for existing pages too** – rules run on every request, not only on 404s
+* **Fast** – no database query at all when you have no rules, and a single indexed lookup when you do
+
+**404 Auto Redirect**
+
+* **Redirect 404 to Homepage or Any URL** – send all remaining 404 errors to your homepage, a landing page, or an external site
+* **SEO-Friendly 301 Redirects** – permanent redirects that pass link equity, with a 302 option when you need it
 * **Quick Page Select** – pick any published page from a dropdown instead of typing a URL
+* **Redirect Loop Protection** – checks the destination really exists before sending anyone to it
+* **Skip Files & System Paths** – missing images, scripts, fonts and documents keep a real 404
+* **Custom Exclusion Patterns** – your own wildcard rules for URLs that should stay a genuine 404
+* **Smart Exclusions** – feeds, sitemaps, robots.txt, REST API and cron requests keep their real 404 status
+
+**404 Monitor**
+
+* **404 Error Log** – every broken URL recorded with a hit counter, referrer, and first/last seen timestamps
+* **One-click Create Redirect** – turn any logged 404 into a Redirection Manager rule, pre-filled for you
 * **CSV Export** – download your full 404 log for analysis in Excel or Google Sheets
 * **Top 404 Errors Widget** – your five worst broken links, right on the settings screen
-* **Privacy-Friendly Logging** – no IP addresses, no user agents, no personal data stored
+* **Privacy-Friendly** – no IP addresses, no user agents, no personal data stored
 * **Self-Limiting Log Table** – hard-capped at 1,000 rows, so a bot scan can never bloat your database
-* **Smart Exclusions** – feeds, sitemaps, robots.txt, REST API and cron requests keep their real 404 status
-* **Skip Files & System Paths** – missing images, scripts, fonts and documents keep a real 404 instead of being redirected
-* **Custom Exclusion Patterns** – your own wildcard rules for URLs that should stay a genuine 404
-* **Redirect Loop Protection** – checks the destination really exists before sending anyone to it
-* **Lightweight & Fast** – no bloat, no third-party services, and zero work on pages that are not 404s
-* **Works With Any Theme** – runs independently of your theme and page builder
 
-= The 404 Error Log =
+= The Redirection Manager =
+
+Open **Auto Redirects → Redirection Manager** to add a rule. Each rule has:
+
+* **Source URL** – the address visitors arrive at, such as `/old-page`. You can paste a full URL; the domain is removed for you.
+* **Match Type**
+  * *Exact URL* – matches that one address. Not case sensitive, and a trailing slash makes no difference.
+  * *Wildcard* – `*` matches any part of the path. `/old-blog/*` → `/blog/$1` moves a whole section in one rule.
+  * *Regular Expression* – full PCRE patterns for anything more complex, such as `^/(\d{4})/(\d{2})/(.+)$` → `/$3`.
+* **Target URL** – a path on your site starting with `/`, or a full URL to any site. Pick a page from the dropdown if you prefer.
+* **Redirect Type** – 301 or 308 for permanent moves, 302 or 307 for temporary ones, or 410 to tell search engines a page has been removed for good.
+* **Query String** – *Ignore* redirects `/page?utm_source=x` the same as `/page`. *Pass to target* does the same but keeps the query string on the destination, so campaign tracking survives. *Exact match* only redirects when the query string in the source matches, in any order.
+
+Rules are checked on every front-end request, before WordPress decides a page is missing. That means a rule wins over the catch-all 404 redirect, and can redirect a page that still exists. Exact rules are tried first, then wildcard and regex rules from oldest to newest.
+
+**Import and export.** Export writes all rules to CSV. Import reads the same columns – `source, target, code, match, query, enabled` – where only the source and target are required. Sources that already have a rule are skipped, never overwritten.
+
+= The 404 Monitor =
 
 Turn on **404 Logging** from the settings screen and the plugin starts recording every broken URL on your site.
 
-Each unique URL is stored once with a hit counter, so a crawler hitting the same missing page ten thousand times creates a single row — not ten thousand. The log is capped at 1,000 entries and trims the least recently seen URLs automatically, so it can never grow out of control.
+Each unique URL is stored once with a hit counter, so a crawler hitting the same missing page ten thousand times creates a single row – not ten thousand. The log is capped at 1,000 entries and trims the least recently seen URLs automatically.
 
 From the **404 Logs** tab you can:
 
 * Sort by hit count to find your most damaging broken links first
+* Hover any URL and choose **Create Redirect** to send it somewhere useful – the log entry is cleared once the rule is saved
 * Search the log by URL or referrer
 * See where each broken link was clicked from
 * Delete individual entries, bulk delete, or clear the whole log
 * Export everything to CSV
 
-Logging stores the requested path, the referring URL, a hit count and timestamps. **No IP addresses and no user agents are recorded**, so there is nothing personally identifying in the log.
+Logging stores the requested path, the referring URL, a hit count and timestamps. **No IP addresses and no user agents are recorded.**
 
 = Exclusions & Safety =
 
-Three controls on the settings screen decide exactly which 404s the plugin touches. On a new install they are switched on for you. If you are updating from an earlier version they start switched off, so your site keeps behaving exactly as it did until you choose to enable them.
+Three controls decide exactly which 404s the catch-all redirect touches. On a new install they are switched on for you. If you are updating from 1.0.x they start switched off, so your site keeps behaving exactly as it did until you choose to enable them.
 
-**Redirect Loop Protection** verifies that your redirect destination actually exists before sending visitors to it. If the destination is itself missing, the plugin steps aside and shows the normal 404 page rather than bouncing the visitor back and forth until the browser gives up.
+**Redirect Loop Protection** verifies that your catch-all destination actually exists before sending visitors to it. If it is itself missing, the plugin steps aside and shows the normal 404 page. The check runs on a scheduled background task and whenever you save settings, never during a visitor's request.
 
-The check itself runs on a scheduled background task and whenever you save settings, never during a visitor's request, so it can never add a single millisecond to a page load. A destination that has not been checked, or cannot be checked because your host blocks internal requests, is simply treated as fine and your redirects carry on working exactly as before.
-
-**Skip Files & System Paths** keeps a real 404 for missing images, scripts, stylesheets, fonts, documents and archives, and for system paths such as `/wp-json/`, `/wp-content/`, feeds, sitemaps and `robots.txt`. Redirecting a missing image or script to an HTML page confuses browsers and crawlers, so this is switched on for new installs and recommended for everyone else.
+**Skip Files & System Paths** keeps a real 404 for missing images, scripts, stylesheets, fonts, documents and archives, and for system paths such as `/wp-json/`, `/wp-content/`, feeds, sitemaps and `robots.txt`.
 
 **Exclusion Patterns** lets you list your own URL patterns, one per line, that should always keep a genuine 404:
 
@@ -71,7 +105,7 @@ The check itself runs on a scheduled background task and whenever you save setti
 */preview
 /campaign-?`
 
-Use `*` to match any part of a path and `?` to match a single character. Matching is against the path only, ignoring the domain and query string, and is not case sensitive. Excluded URLs are neither redirected nor logged.
+Use `*` to match any part of a path and `?` to match a single character. Excluded URLs are neither redirected nor logged. Redirection Manager rules are not affected by exclusions – a rule you create always applies.
 
 = Why Fix 404 Errors? =
 
@@ -82,22 +116,29 @@ Unhandled 404 errors quietly cost you:
 * **Conversions** – a potential customer who lands on an error page is a lost sale
 * **Credibility** – broken pages make a site look abandoned
 
-A 301 redirect solves all four at once, and the 404 log tells you which URLs are worth a dedicated redirect.
+A 301 redirect solves all four at once. The 404 Monitor tells you which URLs deserve their own rule, and the Redirection Manager gives it to them.
 
 = Perfect For =
 
 * Fixing 404 errors after a site migration or redesign
-* Recovering traffic from deleted posts, pages, and products
+* Redirecting old permalinks, renamed pages and moved categories
+* Recovering traffic from deleted posts, pages and products
 * Cleaning up "Not found (404)" reports in Google Search Console
-* Finding broken links pointing at your site from elsewhere
-* Catching mistyped URLs in your own navigation and content
+* Telling search engines a page is gone for good with a 410
+* Keeping campaign URLs working after a landing page changes
 * SEO audits and ongoing link maintenance
 
 = For Developers =
 
-Three filters let you customise behaviour without touching plugin files:
+Four filters let you customise behaviour without touching plugin files:
 
-`// Skip the redirect for specific URLs.
+`// Skip a Redirection Manager rule for specific requests.
+add_filter( 'r404c_should_apply_rule', function ( $apply, $match, $current_url ) {
+    // $match = array( 'id' => 12, 'target' => 'https://…', 'code' => 301 )
+    return $apply;
+}, 10, 3 );`
+
+`// Skip the catch-all 404 redirect for specific URLs.
 add_filter( 'r404c_should_redirect', function ( $should, $current_url, $target ) {
     if ( false !== strpos( $current_url, '/keep-404/' ) ) {
         return false;
@@ -110,10 +151,12 @@ add_filter( 'r404c_should_log', function ( $should, $url ) {
     return false === strpos( $url, '/wp-content/' ) ? $should : false;
 }, 10, 2 );`
 
-`// Exclude a request from both redirecting and logging.
+`// Exclude a 404 from both the catch-all redirect and logging.
 add_filter( 'r404c_exclude_request', function ( $excluded ) {
     return $excluded;
 } );`
+
+Redirects sent by a Redirection Manager rule carry the header `X-Redirect-By: Auto Redirect 404s`, which makes them easy to spot in browser dev tools and crawl reports.
 
 = Support the Developer =
 
@@ -125,123 +168,145 @@ If this plugin saved you time, please consider [buying me a coffee](https://buym
 
 1. Log in to your WordPress admin dashboard
 2. Navigate to **Plugins > Add New**
-3. Search for "Auto Redirect 404 to Custom URL"
+3. Search for "Auto Redirect 404s"
 4. Click **Install Now** and then **Activate**
-5. Go to **Settings > Auto 404 Redirects** to configure
+5. Open the new **Auto Redirects** menu in your admin sidebar
 
 = Manual Installation =
 
 1. Download the plugin ZIP file
 2. Upload the `auto-redirect-404s` folder to `/wp-content/plugins/`
 3. Activate the plugin through the **Plugins** menu in WordPress
-4. Navigate to **Settings > Auto 404 Redirects** to configure your redirect URL
+4. Open **Auto Redirects** in your admin sidebar
 
 = Configuration =
 
-1. After activation, go to **Settings > Auto 404 Redirects**
-2. Enter your custom redirect URL, or pick a page from the **Quick Select** dropdown
+1. Go to **Auto Redirects → Settings**
+2. Enter your catch-all redirect URL, or pick a page from the **Quick Select** dropdown
 3. Choose **301 (permanent)** for SEO, or **302 (temporary)** if the change is short-term
 4. Switch on **404 Logging** if you want to record broken links
-5. Optionally add **Exclusion Patterns** for URLs that should stay a real 404
-6. Click **Save Settings**
-7. Test by visiting a non-existent page on your site
+5. Click **Save Settings**
+6. Go to **Auto Redirects → Redirection Manager** to add redirects for specific URLs
+7. Test by visiting an old or non-existent URL on your site
+
+The screen is also still reachable from **Settings → Auto 404 Redirects**, where it lived in earlier versions.
 
 == Frequently Asked Questions ==
 
-= Can I redirect 404 errors to any URL? =
+= What is the difference between the 404 Auto Redirect and the Redirection Manager? =
 
-Yes. You can redirect to any valid URL — an internal page, a category archive, a custom landing page, or an external website. Use the Quick Select dropdown to pick a published page, or type any URL you like.
-
-= How do I redirect all 404 errors to my homepage? =
-
-Leave the redirect URL set to your site address, or choose **Home Page** from the Quick Select dropdown. Every 404 will then land on your homepage.
-
-= Does this plugin use 301 redirects? =
-
-Yes. 301 (permanent) is the default and is recommended for SEO, because it passes link equity to the destination. A 302 (temporary) option is available if the redirect is not meant to be permanent.
-
-= Will this fix 404 errors in Google Search Console? =
-
-Yes. Adding a redirect is one of Google's recommended ways to resolve "Not found (404)" errors. Once Google recrawls the affected URLs, the errors drop out of the report. Recrawling can take days or weeks depending on your site.
-
-= Should I redirect every 404 to the homepage? =
-
-It is a good default, and far better than leaving visitors on an error page. Where you can, a more relevant destination is better still — Google treats a mass redirect of unrelated URLs to the homepage as a soft 404. That is exactly what the 404 log is for: find your highest-traffic broken URLs and give the important ones a proper destination.
-
-= What does the 404 log record? =
-
-The requested URL path, the referring URL, a hit counter, and the first and last time it was seen. **No IP addresses and no user agent strings are stored**, so the log contains no personally identifying information.
-
-= Will 404 logging slow down my site? =
-
-No. Logging only runs when a page actually returns a 404 — normal page views do no extra work at all. Because each unique URL is stored once with a counter rather than one row per hit, even a heavy bot scan adds almost nothing.
-
-= How large can the log table get? =
-
-It is hard-capped at 1,000 rows. Once the cap is reached, the least recently seen entries are removed automatically. There is nothing to maintain and no way for it to grow without limit.
-
-= Can I export the 404 log? =
-
-Yes. The **Export CSV** button on the 404 Logs tab downloads the full log, sorted by hit count, ready for Excel or Google Sheets.
-
-= Will updating from an older version change anything? =
-
-No. Your redirect URL, redirect type, and enabled/disabled state are preserved exactly as they are. 404 logging is switched **off** after an update, and no database table is created until you turn it on yourself.
-
-= What happens if I don't enter a custom URL? =
-
-If the redirect URL field is empty, no redirect is performed and visitors see your normal 404 page. To redirect to your homepage, enter your site address or pick **Home Page** from the dropdown.
-
-= Does this affect site performance? =
-
-No. The plugin does nothing at all on pages that load normally. It only acts when WordPress has already determined the request is a 404.
-
-= Will this break my sitemap, feeds, or REST API? =
-
-No. Requests for feeds, XML sitemaps, robots.txt, the REST API, XML-RPC and cron are excluded automatically and keep their real 404 status, which is what search engines and integrations expect.
-
-= What happens if my redirect destination is deleted? =
-
-Redirect Loop Protection catches it. A background task checks that the destination exists, and while it is missing visitors see the normal 404 page instead of being bounced around. The settings screen warns you when the destination is returning a 404, and re-checks it as soon as you save a corrected URL. You can switch the check off under Exclusions & Safety.
-
-= How do I stop certain URLs from being redirected? =
-
-Add them under **Exclusion Patterns** on the settings screen, one per line. Wildcards are supported: `*` matches any part of a path and `?` matches a single character. For example `/private/*` leaves everything under `/private/` as a real 404. Excluded URLs are not logged either.
-
-= Why are missing images and scripts not redirected? =
-
-Because redirecting them causes more problems than it solves. A browser asking for a missing stylesheet expects a 404, not an HTML page. The **Skip Files & System Paths** setting handles this and is on by default; you can switch it off if you really need file requests redirected too.
-
-= Does the plugin make external requests? =
-
-No. The only request it ever makes is Redirect Loop Protection checking your own site's redirect destination, and that runs on a background schedule rather than during anyone's page load. Nothing is sent to any third party.
+The Redirection Manager sends *specific* URLs to *specific* destinations – `/old-pricing` to `/pricing`, for example. The 404 Auto Redirect is a safety net: any 404 that no rule catches goes to one destination, such as your homepage. Rules always run first.
 
 = Can I redirect different 404 pages to different URLs? =
 
-Not in this version — all 404 errors go to a single destination. The 404 log helps you identify which specific URLs deserve their own rule, which you can add with a dedicated redirect plugin or in your server config.
+Yes. That is exactly what the Redirection Manager is for. Add a rule per URL, or use a wildcard or regex rule to handle a whole group at once. Anything without a rule still falls back to the catch-all destination on the Settings tab.
 
-= Will this work with my theme? =
+= Which redirect type should I use? =
 
-Yes. The plugin works independently of your theme, page builder, and block editor, and is compatible with any WordPress theme.
+Use **301** when a page has moved for good – it is the one Google recommends for passing ranking signals. **308** is the same but keeps the request method, which only matters for forms and APIs. Use **302** or **307** for temporary moves. Use **410 Gone** for content you have removed on purpose and do not want to redirect; search engines drop a 410 faster than a 404.
+
+= How do wildcard redirects work? =
+
+A `*` in the source matches any run of characters, and whatever it matched can be inserted into the target as `$1` (then `$2` for a second `*`, and so on). For example, source `/old-blog/*` and target `/blog/$1` sends `/old-blog/my-post` to `/blog/my-post`.
+
+= Can I use regular expressions? =
+
+Yes. Choose **Regular Expression** as the match type and enter a PCRE pattern, such as `^/product/(\d+)$`. Capture groups become `$1`, `$2` … in the target. Patterns are checked when you save, so a typo is reported instead of breaking your site. Matching is not case sensitive.
+
+= Can I redirect a page that still exists? =
+
+Yes. Rules run on every request, not only on 404s, so a rule replaces a live page. This is handy for pointing an old page at its replacement before you delete it.
+
+= Does the Redirection Manager slow my site down? =
+
+No. With no rules there is no extra database work at all. Exact rules are found with a single indexed lookup, and wildcard and regex rules are cached together in one option. Rules are matched before WordPress loads your theme, and a matched URL is redirected immediately.
+
+= Can I import redirects from another plugin or a spreadsheet? =
+
+Yes. Save them as a CSV with the columns `source, target, code, match, query, enabled` and use **Import redirects from CSV** on the Redirection Manager tab. Only source and target are required. Exporting from this plugin produces the same format, which makes moving redirects between sites easy.
+
+= Can I redirect all 404 errors to my homepage? =
+
+Yes. Leave the catch-all redirect URL set to your site address, or choose **Home Page** from the Quick Select dropdown.
+
+= Will this fix 404 errors in Google Search Console? =
+
+Yes. Adding a redirect is one of Google's recommended ways to resolve "Not found (404)" errors. Once Google recrawls the affected URLs, the errors drop out of the report. Recrawling can take days or weeks.
+
+= Should I redirect every 404 to the homepage? =
+
+It is a good default, and far better than leaving visitors on an error page. Where you can, a more relevant destination is better still – Google treats a mass redirect of unrelated URLs to the homepage as a soft 404. Use the 404 Monitor to find your highest-traffic broken URLs, then give the important ones a proper destination with **Create Redirect**.
+
+= What does the 404 log record? =
+
+The requested URL path, the referring URL, a hit counter, and the first and last time it was seen. **No IP addresses and no user agent strings are stored.**
+
+= How large can the log table get? =
+
+It is hard-capped at 1,000 rows. Once the cap is reached, the least recently seen entries are removed automatically.
+
+= Will updating from an older version change anything? =
+
+No. Your catch-all redirect URL, redirect type, logging state and exclusions are preserved exactly as they are. Version 1.3.0 adds the Redirection Manager with no rules in it, so nothing changes until you add one. The screen moves to its own **Auto Redirects** menu, and the old **Settings → Auto 404 Redirects** link still works.
+
+= What happens if I don't enter a catch-all URL? =
+
+If the redirect URL field is empty, unmatched 404s are not redirected and visitors see your normal 404 page. Redirection Manager rules still work.
+
+= Will this break my sitemap, feeds, or REST API? =
+
+No. Feeds, XML sitemaps, robots.txt, the REST API, XML-RPC and cron keep their real 404 status and are never caught by the catch-all redirect. Redirection Manager rules only apply to the URLs you create them for.
+
+= What happens if my redirect destination is deleted? =
+
+Redirect Loop Protection catches it for the catch-all redirect: while the destination is missing, visitors see the normal 404 page instead of being bounced around, and the settings screen warns you. Redirection Manager rules also refuse to redirect a URL to itself, both when you save the rule and at request time.
+
+= Does the plugin make external requests? =
+
+No. The only request it ever makes is Redirect Loop Protection checking your own site's catch-all destination, on a background schedule. Nothing is sent to any third party.
 
 = Can I use this with other redirect plugins? =
 
-Yes, but be aware that multiple redirect plugins can conflict. This plugin acts only on requests that WordPress has already resolved as a 404, so it generally runs after other redirect rules have had their chance.
+Yes, but running several redirect plugins at once can make it hard to tell which one sent a visitor where. Rules from this plugin are marked with an `X-Redirect-By: Auto Redirect 404s` header to help.
 
 = Does it work on WordPress Multisite? =
 
-Yes. Each site in the network keeps its own settings and its own 404 log.
+Yes. Each site in the network keeps its own settings, redirect rules and 404 log.
 
 = What happens to my data if I delete the plugin? =
 
-Deleting the plugin removes its settings and drops the log table, leaving nothing behind. Deactivating it changes nothing, so you can safely deactivate and reactivate without losing your configuration or your logs.
+Deleting the plugin removes its settings, drops the redirect and log tables, and leaves nothing behind. Deactivating changes nothing, so you can deactivate and reactivate without losing your rules or your logs.
 
 == Screenshots ==
 
-1. The settings screen
-2. The 404 Logs screen
+1. Settings – the catch-all 404 redirect and safety options
+2. 404 Logs – every broken URL with hits, referrer and one-click Create Redirect
+3. Redirection Manager – add exact, wildcard and regex redirects and manage them in one list
 
 == Changelog ==
+
+= 1.3.0 =
+
+**Redirection Manager**
+
+* New: **Redirection Manager** tab for creating your own redirects
+* New: 301, 302, 307 and 308 redirects, plus 410 Gone for removed content
+* New: exact, wildcard (`*`) and regular expression matching, with `$1`, `$2` … captures in the target
+* New: per-rule query string handling – ignore, pass through to the target, or match exactly
+* New: hit counter and last-hit date for every rule
+* New: enable, disable, edit, delete, search, sort, filter and bulk actions
+* New: CSV import and export of redirect rules
+* New: **Create Redirect** action on every 404 log entry, which pre-fills the rule and clears the log entry once saved
+* New: `r404c_should_apply_rule` filter, and an `X-Redirect-By: Auto Redirect 404s` header on rule redirects
+* Performance: rules add no database work when there are none, and a single indexed lookup when there are
+
+**Interface**
+
+* New: top-level **Auto Redirects** admin menu with Settings, Redirection Manager and 404 Logs submenus
+* New: page header summarising the status of the 404 Auto Redirect, Redirection Manager and 404 Monitor at a glance
+* Changed: the plugin is renamed "Auto Redirect 404s – 301 Redirect Manager & 404 Monitor" to reflect its three features
+* Compatibility: **Settings → Auto 404 Redirects** is still in the menu, and old bookmarked URLs forward to the new screen
+* Uninstall now also removes the redirects table and its cache
 
 = 1.2.0 =
 
@@ -286,6 +351,9 @@ Deleting the plugin removes its settings and drops the log table, leaving nothin
 
 == Upgrade Notice ==
 
+= 1.3.0 =
+Adds the Redirection Manager: 301/302/307/308/410 redirects with exact, wildcard and regex matching, CSV import/export, and one-click redirects from the 404 log. The plugin now has its own Auto Redirects menu. Your existing settings and logs are untouched.
+
 = 1.2.0 =
 Adds optional 404 error logging, redirect loop protection, file and system path skipping, and custom exclusion patterns. Your existing settings are preserved and the new options start switched off, so nothing changes until you enable them. Now requires WordPress 5.0+ and PHP 7.4+.
 
@@ -293,7 +361,9 @@ Adds optional 404 error logging, redirect loop protection, file and system path 
 
 This plugin does not send any data to any external service.
 
-The only network request it ever makes is Redirect Loop Protection issuing a HEAD request to your own site, to confirm the redirect destination exists before visitors are sent there. It runs on a scheduled background task, no data leaves your server, and the check can be switched off on the settings screen.
+The only network request it ever makes is Redirect Loop Protection issuing a HEAD request to your own site, to confirm the catch-all redirect destination exists before visitors are sent there. It runs on a scheduled background task, no data leaves your server, and the check can be switched off on the settings screen.
+
+Redirection Manager rules store only what you enter – source, target, redirect type and options – plus a hit counter and the time of the last hit. Nothing about the visitor is recorded.
 
 When 404 logging is enabled, the plugin stores the following in a table in your own database:
 
@@ -301,7 +371,7 @@ When 404 logging is enabled, the plugin stores the following in a table in your 
 * The referring URL, if the browser supplied one
 * A hit counter and the first/last seen timestamps
 
-**No IP addresses, no user agent strings, and no user account information are recorded.** The log is capped at 1,000 rows and older entries are removed automatically. Logging is off by default and can be switched off at any time, and deleting the plugin removes the table entirely.
+**No IP addresses, no user agent strings, and no user account information are recorded.** The log is capped at 1,000 rows and older entries are removed automatically. Logging can be switched off at any time, and deleting the plugin removes all of its tables.
 
 == Support ==
 

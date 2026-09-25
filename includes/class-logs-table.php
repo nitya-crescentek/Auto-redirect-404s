@@ -154,17 +154,34 @@ class R404C_Logs_Table extends WP_List_Table {
         $delete_url = wp_nonce_url(
             add_query_arg(
                 array(
-                    'page'     => 'auto-redirect-404s',
+                    'page'     => R404C_Admin::PAGE_SLUG,
                     'tab'      => 'logs',
                     'r404c_action' => 'delete_log',
                     'log_id'   => (int) $item->id,
                 ),
-                admin_url('options-general.php')
+                admin_url('admin.php')
             ),
             'r404c_delete_log_' . (int) $item->id
         );
 
+        // Opens the Redirection Manager form pre-filled with this URL.
+        // add_query_arg() does not encode values, so the path is encoded here.
+        $redirect_url = add_query_arg(
+            array(
+                'page'     => R404C_Admin::PAGE_SLUG,
+                'tab'      => 'redirects',
+                'source'   => rawurlencode($item->url),
+                'from_log' => (int) $item->id,
+            ),
+            admin_url('admin.php')
+        ) . '#r404c-redirect-form';
+
         $actions = array(
+            'redirect' => sprintf(
+                '<a href="%s">%s</a>',
+                esc_url($redirect_url),
+                esc_html__('Create Redirect', 'auto-redirect-404s')
+            ),
             'visit'  => sprintf(
                 '<a href="%s" target="_blank" rel="noopener noreferrer">%s</a>',
                 esc_url($full_url),
@@ -219,7 +236,7 @@ class R404C_Logs_Table extends WP_List_Table {
      * @return string
      */
     public function column_first_seen($item) {
-        return $this->format_date($item->first_seen);
+        return self::format_date($item->first_seen);
     }
 
     /**
@@ -229,7 +246,7 @@ class R404C_Logs_Table extends WP_List_Table {
      * @return string
      */
     public function column_last_seen($item) {
-        return $this->format_date($item->last_seen);
+        return self::format_date($item->last_seen);
     }
 
     /**
@@ -246,10 +263,12 @@ class R404C_Logs_Table extends WP_List_Table {
     /**
      * Render a stored datetime as "x ago" with the absolute value on hover.
      *
+     * Also used by the Redirection Manager table.
+     *
      * @param string $mysql_date Datetime in MySQL format, site timezone.
      * @return string
      */
-    private function format_date($mysql_date) {
+    public static function format_date($mysql_date) {
         $timestamp = mysql2date('U', $mysql_date, false);
 
         if (!$timestamp) {
